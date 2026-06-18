@@ -1,17 +1,16 @@
 # Credits
 
-## Art — KayKit Platformer Pack
+## Art — KayKit Platformer Pack (EXTRA)
 
-3D art is designed around the **KayKit : Platformer Pack** by **Kay Lousberg**.
+3D art is the **KayKit Platformer Pack (EXTRA)** by **Kay Lousberg**, which is
+**included in this repo** under [`public/models/kaykit/`](./public/models/kaykit)
+(color subfolders `blue/`, `green/`, `red/`, `yellow/`, `neutral/`).
 
-- License: **Creative Commons Zero (CC0)** — free for personal, educational,
-  and commercial use. Crediting is appreciated but not required.
+- License: **Creative Commons Zero (CC0)** / public domain — free for personal,
+  educational, and commercial use. Crediting is appreciated but not required.
   <http://creativecommons.org/publicdomain/zero/1.0/>
-- Full license text travels with the assets:
-  [`public/models/LICENSE-KayKit.txt`](./public/models/LICENSE-KayKit.txt)
-
-The model files themselves are **not** redistributed in this repo. Download the
-pack and drop the files into `public/models/`.
+- Full license text ships with the assets:
+  [`public/models/kaykit/LICENSE.txt`](./public/models/kaykit/LICENSE.txt)
 
 ### Links
 

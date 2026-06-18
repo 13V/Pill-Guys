@@ -1,66 +1,115 @@
+import * as THREE from 'three';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 
-const BASE = import.meta.env.BASE_URL;
+// import.meta.env is Vite-only; fall back to '/' so this module is importable in Node (tests).
+const BASE = (import.meta.env && import.meta.env.BASE_URL) || '/';
+const ROOT = `${BASE}models/kaykit/`;
 
-// Logical model name -> file path under `public/models/`.
-// Drop the matching KayKit Platformer Pack files (.gltf/.glb) into that folder
-// and they will be used automatically. If a file is missing, the game falls
-// back to a built-in primitive placeholder, so it always runs.
-//
-// KayKit ships many files — rename (or copy) the ones you want to these names,
-// or edit the paths here to match the pack's filenames.
-export const MODEL_MANIFEST = {
-  character: 'models/character.gltf',
-  hammer: 'models/hammer.gltf',
-  crown: 'models/crown.gltf',
-};
+// KayKit Platformer Pack models to preload, as `${color}/${name}`.
+// File path resolves to: models/kaykit/{color}/{name}_{color}.gltf
+// (KayKit's grid is 1:1 with our world units, and models are base-origin: minY = 0.)
+export const PRELOAD = [
+  // platforms (blue = normal, green = finish)
+  'blue/platform_2x2x1', 'blue/platform_4x4x1', 'blue/platform_6x6x1',
+  'blue/platform_6x2x1', 'blue/platform_4x2x1', 'blue/platform_4x4x2',
+  'green/platform_6x6x1', 'green/platform_4x4x1',
+  'blue/platform_slope_2x4x4', 'blue/platform_slope_4x4x4',
+  'blue/platform_arrow_4x4x1', 'blue/platform_arrow_2x2x1',
+  // conveyor
+  'blue/conveyor_4x8x1', 'blue/conveyor_4x4x1',
+  // hazards
+  'red/swiper_double', 'red/swiper_long', 'red/ball', 'red/hammer_large',
+  'blue/saw_trap', 'red/saw_trap', 'blue/saw_trap_long',
+  // arches / gates / decoration
+  'blue/arch_wide', 'red/arch_wide', 'blue/hoop',
+  'blue/arch_tall', 'green/arch_tall',
+  // flags / goal
+  'green/flag_C', 'green/flag_B', 'yellow/star',
+  // extras
+  'blue/spring_pad', 'blue/barrier_4x1x4',
+];
 
 export class Assets {
   constructor() {
     this.loader = new GLTFLoader();
-    this.models = {}; // name -> THREE.Object3D template, or null if unavailable
+    this.cache = new Map(); // "color/name" -> THREE.Object3D template (or null)
   }
 
-  // Attempts to load every entry in the manifest. Missing files are tolerated.
   async preload(onProgress) {
-    const names = Object.keys(MODEL_MANIFEST);
     let done = 0;
-
     await Promise.all(
-      names.map(async (name) => {
-        const url = BASE + MODEL_MANIFEST[name];
+      PRELOAD.map(async (key) => {
+        const [color, name] = key.split('/');
+        const url = `${ROOT}${color}/${name}_${color}.gltf`;
         try {
           const gltf = await this.loader.loadAsync(url);
-          this.models[name] = gltf.scene;
+          this.cache.set(key, gltf.scene);
         } catch {
-          // No file yet — that's fine, we'll use a placeholder.
-          this.models[name] = null;
+          this.cache.set(key, null); // tolerate missing; callers fall back
         } finally {
           done += 1;
-          onProgress?.(done, names.length);
+          onProgress?.(done, PRELOAD.length);
         }
       }),
     );
-
-    return this.models;
   }
 
-  has(name) {
-    return Boolean(this.models[name]);
+  has(color, name) {
+    return Boolean(this.cache.get(`${color}/${name}`));
   }
 
-  // Returns a fresh clone ready to drop into the scene, or null if unavailable.
-  get(name) {
-    const template = this.models[name];
-    if (!template) return null;
-
-    const clone = template.clone(true);
-    clone.traverse((obj) => {
-      if (obj.isMesh) {
-        obj.castShadow = true;
-        obj.receiveShadow = true;
+  // A fresh clone ready to add to the scene, or null if unavailable.
+  get(color, name) {
+    const tpl = this.cache.get(`${color}/${name}`);
+    if (!tpl) return null;
+    const obj = tpl.clone(true);
+    obj.traverse((m) => {
+      if (m.isMesh) {
+        m.castShadow = true;
+        m.receiveShadow = true;
       }
     });
-    return clone;
+    return obj;
   }
+}
+
+// --- fit / placement helpers ------------------------------------------------
+
+export function getSize(obj) {
+  const s = new THREE.Vector3();
+  new THREE.Box3().setFromObject(obj).getSize(s);
+  return s;
+}
+
+// Scale per-axis so the model fills `size` (full w,h,d), then move it so its
+// bounding-box center sits at `center`. Best for box-like props (platforms,
+// conveyors, ramps). `center`/`size` are THREE.Vector3 (or {x,y,z}).
+export function fitBox(obj, center, size) {
+  const s = getSize(obj);
+  obj.scale.set(size.x / (s.x || 1), size.y / (s.y || 1), size.z / (s.z || 1));
+  const c = new THREE.Vector3();
+  new THREE.Box3().setFromObject(obj).getCenter(c);
+  obj.position.set(center.x - c.x, center.y - c.y, center.z - c.z);
+  return obj;
+}
+
+// Uniform scale (keeps proportions) so a native dimension equals `target`.
+// axis: 'x' | 'y' | 'z' | 'max'.
+export function fitUniform(obj, target, axis = 'max') {
+  const s = getSize(obj);
+  const dim = axis === 'max' ? Math.max(s.x, s.y, s.z) : s[axis];
+  obj.scale.setScalar(target / (dim || 1));
+  return obj;
+}
+
+// After any scaling, position so the model's base (min.y) is at `baseY` and its
+// XZ bounding-box center is at (x, z). Good for upright props (gates, flags, star).
+export function placeBase(obj, x, baseY, z) {
+  const b = new THREE.Box3().setFromObject(obj);
+  const c = new THREE.Vector3();
+  b.getCenter(c);
+  obj.position.x += x - c.x;
+  obj.position.z += z - c.z;
+  obj.position.y += baseY - b.min.y;
+  return obj;
 }

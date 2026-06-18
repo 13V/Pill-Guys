@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import { getSize, fitBox, fitUniform, placeBase } from './Assets.js';
 
 // Shared material helper.
 const mat = (color, opts = {}) =>
@@ -19,7 +20,7 @@ const COLORS = {
 // Place it low so players must time a run-through, or jump it.
 // ---------------------------------------------------------------------------
 export class SpinningBeam {
-  constructor(scene, physics, opts) {
+  constructor(scene, physics, assets, opts) {
     const { x, y, z, length, height = 1.2, speed = 1.6, phase = 0 } = opts;
     this.isHazard = true;
     this.pivot = new THREE.Vector3(x, y + height, z);
@@ -31,17 +32,24 @@ export class SpinningBeam {
     this.group = new THREE.Group();
     this.group.position.copy(this.pivot);
 
-    const bar = new THREE.Mesh(new THREE.BoxGeometry(length * 2, 0.4, 0.4), mat(COLORS.hazard, { roughness: 0.4 }));
-    bar.castShadow = true;
-    this.group.add(bar);
+    const m = assets.get('red', 'swiper_double');
+    if (m) {
+      m.scale.set((this.length * 2) / 5.5, 1, 1);
+      m.position.y = -0.75;
+      this.group.add(m);
+    } else {
+      const bar = new THREE.Mesh(new THREE.BoxGeometry(length * 2, 0.4, 0.4), mat(COLORS.hazard, { roughness: 0.4 }));
+      bar.castShadow = true;
+      this.group.add(bar);
 
-    const capGeo = new THREE.BoxGeometry(0.7, 0.7, 0.7);
-    const capMat = mat(COLORS.trim);
-    for (const s of [-1, 1]) {
-      const cap = new THREE.Mesh(capGeo, capMat);
-      cap.position.x = s * length;
-      cap.castShadow = true;
-      this.group.add(cap);
+      const capGeo = new THREE.BoxGeometry(0.7, 0.7, 0.7);
+      const capMat = mat(COLORS.trim);
+      for (const s of [-1, 1]) {
+        const cap = new THREE.Mesh(capGeo, capMat);
+        cap.position.x = s * length;
+        cap.castShadow = true;
+        this.group.add(cap);
+      }
     }
     scene.add(this.group);
 
@@ -75,7 +83,7 @@ export class SpinningBeam {
 // along Z. Jump over it as it passes. Hit (while low) = respawn.
 // ---------------------------------------------------------------------------
 export class SpikeRoller {
-  constructor(scene, physics, opts) {
+  constructor(scene, physics, assets, opts) {
     const { x, y, z, span = 5, radius = 0.6, range = 4, speed = 1.4, phase = 0 } = opts;
     this.isHazard = true;
     this.base = new THREE.Vector3(x, y + radius, z);
@@ -87,23 +95,31 @@ export class SpikeRoller {
     this.center = this.base.clone();
 
     this.group = new THREE.Group();
-    // Cylinder axis is Y by default; rotate to lie along X (across the path).
-    const core = new THREE.Mesh(new THREE.CylinderGeometry(radius, radius, span, 16), mat(COLORS.metal, { metalness: 0.3 }));
-    core.rotation.z = Math.PI / 2;
-    core.castShadow = true;
     this.spinner = new THREE.Group();
-    this.spinner.add(core);
 
-    // Spikes around the drum.
-    const spikeMat = mat(COLORS.spike);
-    for (let i = 0; i < 8; i += 1) {
-      const a = (i / 8) * Math.PI * 2;
-      for (let k = -1; k <= 1; k += 1) {
-        const spike = new THREE.Mesh(new THREE.ConeGeometry(0.16, 0.5, 6), spikeMat);
-        spike.position.set(k * (span / 3), Math.cos(a) * radius, Math.sin(a) * radius);
-        spike.rotation.x = -a + Math.PI / 2;
-        spike.castShadow = true;
-        this.spinner.add(spike);
+    const saw = assets.get('blue', 'saw_trap');
+    if (saw) {
+      this.usingModel = true;
+      fitUniform(saw, this.span);
+      this.spinner.add(saw);
+    } else {
+      // Cylinder axis is Y by default; rotate to lie along X (across the path).
+      const core = new THREE.Mesh(new THREE.CylinderGeometry(radius, radius, span, 16), mat(COLORS.metal, { metalness: 0.3 }));
+      core.rotation.z = Math.PI / 2;
+      core.castShadow = true;
+      this.spinner.add(core);
+
+      // Spikes around the drum.
+      const spikeMat = mat(COLORS.spike);
+      for (let i = 0; i < 8; i += 1) {
+        const a = (i / 8) * Math.PI * 2;
+        for (let k = -1; k <= 1; k += 1) {
+          const spike = new THREE.Mesh(new THREE.ConeGeometry(0.16, 0.5, 6), spikeMat);
+          spike.position.set(k * (span / 3), Math.cos(a) * radius, Math.sin(a) * radius);
+          spike.rotation.x = -a + Math.PI / 2;
+          spike.castShadow = true;
+          this.spinner.add(spike);
+        }
       }
     }
     this.group.add(this.spinner);
@@ -116,7 +132,11 @@ export class SpikeRoller {
     this.center.set(this.base.x, this.base.y, this.base.z + offset);
     this.group.position.copy(this.center);
     // Roll visually in the direction of travel.
-    this.spinner.rotation.x = (elapsed * this.speed * this.range) / this.radius;
+    if (this.usingModel) {
+      this.spinner.rotation.y = (elapsed * this.speed * this.range) / this.radius;
+    } else {
+      this.spinner.rotation.x = (elapsed * this.speed * this.range) / this.radius;
+    }
   }
 
   hitTest(pos, pr) {
@@ -131,7 +151,7 @@ export class SpikeRoller {
 // collider handle is registered so the player picks up its surface velocity.
 // ---------------------------------------------------------------------------
 export class Conveyor {
-  constructor(scene, physics, opts) {
+  constructor(scene, physics, assets, opts) {
     const { x, y, z, w, d, dir = 'z', speed = 4 } = opts;
     const axis = dir === 'x' ? new THREE.Vector3(1, 0, 0) : new THREE.Vector3(0, 0, 1);
     this.push = axis.multiplyScalar(speed);
@@ -140,10 +160,16 @@ export class Conveyor {
     const res = physics.addStaticBox(center, new THREE.Vector3(w, 1, d));
     this.surfaceHandle = res.collider.handle;
 
-    const belt = new THREE.Mesh(new THREE.BoxGeometry(w, 1, d), mat(COLORS.belt, { roughness: 0.85 }));
-    belt.position.copy(center);
-    belt.receiveShadow = true;
-    scene.add(belt);
+    const model = assets.get('blue', 'conveyor_4x8x1');
+    if (model) {
+      fitBox(model, { x, y: y - 0.5, z }, { x: w, y: 1, z: d });
+      scene.add(model);
+    } else {
+      const belt = new THREE.Mesh(new THREE.BoxGeometry(w, 1, d), mat(COLORS.belt, { roughness: 0.85 }));
+      belt.position.copy(center);
+      belt.receiveShadow = true;
+      scene.add(belt);
+    }
 
     // Animated chevrons indicating direction.
     this.dir = dir;
@@ -185,7 +211,7 @@ export class Conveyor {
 // is carried by adding its surface velocity (computed analytically).
 // ---------------------------------------------------------------------------
 export class MovingPlatform {
-  constructor(scene, physics, opts) {
+  constructor(scene, physics, assets, opts) {
     const { x, y, z, w, d, axis = 'x', amplitude = 4, speed = 1.2, phase = 0, color = 0x49c7ff } = opts;
     this.base = new THREE.Vector3(x, y, z);
     this.axis = axis === 'x' ? new THREE.Vector3(1, 0, 0) : new THREE.Vector3(0, 0, 1);
@@ -198,16 +224,24 @@ export class MovingPlatform {
     this.body = res.body;
     this.surfaceHandle = res.collider.handle;
 
-    this.mesh = new THREE.Mesh(new THREE.BoxGeometry(w, 1, d), mat(color));
-    this.mesh.castShadow = true;
-    this.mesh.receiveShadow = true;
+    this.mesh = new THREE.Group();
+    const model = assets.get('blue', 'platform_arrow_4x4x1');
+    if (model) {
+      fitBox(model, { x: 0, y: 0, z: 0 }, { x: w, y: 1, z: d });
+      this.mesh.add(model);
+    } else {
+      const box = new THREE.Mesh(new THREE.BoxGeometry(w, 1, d), mat(color));
+      box.castShadow = true;
+      box.receiveShadow = true;
+      this.mesh.add(box);
+
+      // Trim so it reads as a moving tile.
+      const trim = new THREE.Mesh(new THREE.BoxGeometry(w + 0.2, 0.12, d + 0.2), mat(COLORS.trim));
+      trim.position.set(0, 0.56, 0);
+      box.add(trim);
+    }
     this.mesh.position.set(x, y - 0.5, z);
     scene.add(this.mesh);
-
-    // Trim so it reads as a moving tile.
-    const trim = new THREE.Mesh(new THREE.BoxGeometry(w + 0.2, 0.12, d + 0.2), mat(COLORS.trim));
-    trim.position.set(0, 0.56, 0);
-    this.mesh.add(trim);
   }
 
   _offset(t) {
@@ -234,7 +268,7 @@ export class MovingPlatform {
 // Vertical-arc timing, distinct from the flat spinner sweep. Hit = respawn.
 // ---------------------------------------------------------------------------
 export class Pendulum {
-  constructor(scene, _physics, opts) {
+  constructor(scene, _physics, assets, opts) {
     const { x, y, z, armLength = 3, swing = 0.9, speed = 1.6, phase = 0, ballR = 0.6 } = opts;
     this.isHazard = true;
     this.pivot = new THREE.Vector3(x, y + armLength + 1, z);
@@ -250,10 +284,17 @@ export class Pendulum {
     const arm = new THREE.Mesh(new THREE.BoxGeometry(0.12, armLength, 0.12), mat(COLORS.pole));
     arm.position.y = -armLength / 2;
     this.group.add(arm);
-    const ball = new THREE.Mesh(new THREE.SphereGeometry(ballR, 16, 12), mat(COLORS.hazard, { roughness: 0.4 }));
-    ball.position.y = -armLength;
-    ball.castShadow = true;
-    this.group.add(ball);
+    const ballModel = assets.get('red', 'ball');
+    if (ballModel) {
+      fitUniform(ballModel, ballR * 2);
+      ballModel.position.set(0, -armLength, 0);
+      this.group.add(ballModel);
+    } else {
+      const ball = new THREE.Mesh(new THREE.SphereGeometry(ballR, 16, 12), mat(COLORS.hazard, { roughness: 0.4 }));
+      ball.position.y = -armLength;
+      ball.castShadow = true;
+      this.group.add(ball);
+    }
 
     // A small mount so the pivot reads as anchored above the track.
     const mount = new THREE.Mesh(new THREE.BoxGeometry(0.6, 0.6, 0.6), mat(COLORS.metal));
@@ -281,19 +322,25 @@ export class Pendulum {
 // Decorative props (no gameplay collision) — for the KayKit course look.
 // ---------------------------------------------------------------------------
 export class Gear {
-  constructor(scene, _physics, opts) {
+  constructor(scene, _physics, assets, opts) {
     const { x, y, z, radius = 1.6, speed = 1, tilt = 0 } = opts;
     this.speed = speed;
     this.group = new THREE.Group();
-    const disc = new THREE.Mesh(new THREE.CylinderGeometry(radius, radius, 0.4, 24), mat(COLORS.metal, { metalness: 0.3 }));
-    disc.rotation.x = Math.PI / 2;
-    this.group.add(disc);
-    const toothMat = mat(COLORS.metal, { metalness: 0.3 });
-    for (let i = 0; i < 10; i += 1) {
-      const a = (i / 10) * Math.PI * 2;
-      const tooth = new THREE.Mesh(new THREE.BoxGeometry(0.5, 0.5, 0.5), toothMat);
-      tooth.position.set(Math.cos(a) * radius, Math.sin(a) * radius, 0);
-      this.group.add(tooth);
+    const saw = assets.get('blue', 'saw_trap');
+    if (saw) {
+      fitUniform(saw, radius * 2);
+      this.group.add(saw);
+    } else {
+      const disc = new THREE.Mesh(new THREE.CylinderGeometry(radius, radius, 0.4, 24), mat(COLORS.metal, { metalness: 0.3 }));
+      disc.rotation.x = Math.PI / 2;
+      this.group.add(disc);
+      const toothMat = mat(COLORS.metal, { metalness: 0.3 });
+      for (let i = 0; i < 10; i += 1) {
+        const a = (i / 10) * Math.PI * 2;
+        const tooth = new THREE.Mesh(new THREE.BoxGeometry(0.5, 0.5, 0.5), toothMat);
+        tooth.position.set(Math.cos(a) * radius, Math.sin(a) * radius, 0);
+        this.group.add(tooth);
+      }
     }
     this.group.position.set(x, y, z);
     this.group.rotation.y = tilt;
@@ -306,21 +353,36 @@ export class Gear {
 }
 
 export class TubeArch {
-  constructor(scene, _physics, opts) {
+  constructor(scene, _physics, assets, opts) {
     const { x, y, z, radius = 3, color = 0xff5a4d } = opts;
-    const tube = new THREE.Mesh(new THREE.TorusGeometry(radius, 0.5, 12, 24, Math.PI), mat(color, { roughness: 0.4 }));
-    tube.position.set(x, y, z);
-    tube.castShadow = true;
-    scene.add(tube);
-    this.mesh = tube;
+    const arch = assets.get('red', 'arch_wide');
+    if (arch) {
+      fitUniform(arch, radius * 2, 'x');
+      placeBase(arch, x, y, z);
+      scene.add(arch);
+      this.mesh = arch;
+    } else {
+      const tube = new THREE.Mesh(new THREE.TorusGeometry(radius, 0.5, 12, 24, Math.PI), mat(color, { roughness: 0.4 }));
+      tube.position.set(x, y, z);
+      tube.castShadow = true;
+      scene.add(tube);
+      this.mesh = tube;
+    }
   }
 
   update() {}
 }
 
 export class Gate {
-  constructor(scene, _physics, opts) {
+  constructor(scene, _physics, assets, opts) {
     const { x, y, z, width = 6, height = 4, checkered = true, color = 0x7b5cff } = opts;
+    const arch = assets.get(color === 0x32d96a ? 'green' : 'blue', 'arch_tall');
+    if (arch) {
+      fitUniform(arch, width, 'x');
+      placeBase(arch, x, y, z);
+      scene.add(arch);
+      return;
+    }
     const group = new THREE.Group();
     const postGeo = new THREE.BoxGeometry(0.5, height, 0.5);
     const postMat = mat(color);

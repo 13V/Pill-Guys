@@ -34,7 +34,7 @@ so adding or rearranging sections is straightforward.
 | --- | --- | --- |
 | ![Pendulums](docs/screenshots/pendulums.png) | ![Spike rollers](docs/screenshots/spike-rollers.png) | ![Finish](docs/screenshots/finish.png) |
 
-_Rendered with the built-in primitive placeholders — drop in the KayKit models for the final art._
+_Rendered with the bundled KayKit Platformer Pack (EXTRA) models, with primitive fallbacks where a model is missing._
 
 ## Tech
 
@@ -69,11 +69,12 @@ npm run preview
 
 ## Art assets (KayKit)
 
-The game ships with built-in **primitive placeholders**, so it's playable with
-zero downloads. To use the real **KayKit Platformer Pack** (CC0) art shown in
-the design, drop the model files into [`public/models/`](./public/models) —
-see the [instructions there](./public/models/README.md). Matching models are
-loaded automatically; missing ones fall back to placeholders.
+The real **KayKit Platformer Pack (EXTRA)** models (CC0) are now **bundled** in
+[`public/models/kaykit/`](./public/models/kaykit) — organized into color
+subfolders (`blue/`, `green/`, `red/`, `yellow/`, `neutral/`, each with its
+`platformer_texture.png`). They're loaded at runtime via
+[`src/Assets.js`](./src/Assets.js); if any model fails to load, the game
+gracefully falls back to built-in primitive shapes, so it stays playable.
 
 Credits and licensing: see [`CREDITS.md`](./CREDITS.md).
 
@@ -105,7 +106,8 @@ cd token && npm install && npm run create-token   # devnet by default
 │   ├── Input.js            # keyboard
 │   ├── Hud.js              # DOM overlays
 │   └── config.js           # gameplay tuning
-├── public/models/          # drop KayKit .gltf/.glb here (+ CC0 license)
+├── public/models/kaykit/   # bundled KayKit Platformer Pack EXTRA models
+│   │                        #   (blue/ green/ red/ yellow/ neutral/ + LICENSE.txt, CC0)
 └── token/                  # Solana PILL token scripts (scaffold)
 ```
 

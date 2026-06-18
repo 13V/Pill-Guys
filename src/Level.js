@@ -1,5 +1,6 @@
 import * as THREE from 'three';
 import { CONFIG } from './config.js';
+import { getSize, fitBox, fitUniform, placeBase } from './Assets.js';
 import {
   SpinningBeam,
   SpikeRoller,
@@ -53,18 +54,19 @@ export class Level {
   _platform({ x = 0, z, w, d, top = 0, color, pillars = true, collider = true }) {
     const cy = top - 0.5;
     const c = new THREE.Vector3(x, cy, z);
-    const mesh = new THREE.Mesh(new THREE.BoxGeometry(w, 1, d), this._mat(color ?? COLORS.platform));
-    mesh.position.copy(c);
-    mesh.castShadow = true;
-    mesh.receiveShadow = true;
-    this.scene.add(mesh);
+    const modelColor = (color === COLORS.finish) ? 'green' : 'blue';
+    const m = this.assets.get(modelColor, 'platform_6x6x1');
+    if (m) {
+      fitBox(m, { x, y: top - 0.5, z }, { x: w, y: 1, z: d });
+      this.scene.add(m);
+    } else {
+      const mesh = new THREE.Mesh(new THREE.BoxGeometry(w, 1, d), this._mat(color ?? COLORS.platform));
+      mesh.position.copy(c);
+      mesh.castShadow = true;
+      mesh.receiveShadow = true;
+      this.scene.add(mesh);
+    }
     if (collider) this.physics.addStaticBox(c, new THREE.Vector3(w, 1, d));
-
-    // Rim ledge sits just BELOW the top so the blue walking surface stays visible.
-    const trim = new THREE.Mesh(new THREE.BoxGeometry(w + 0.5, 0.3, d + 0.5), this._mat(COLORS.trim));
-    trim.position.set(x, top - 0.28, z);
-    trim.receiveShadow = true;
-    this.scene.add(trim);
 
     if (pillars) {
       const ox = Math.min(w / 2 - 0.8, 3);
@@ -72,7 +74,6 @@ export class Level {
       this._pillar(x - ox, z - oz, top);
       this._pillar(x + ox, z + oz, top);
     }
-    return mesh;
   }
 
   _pillar(x, z, topY) {
@@ -100,12 +101,23 @@ export class Level {
       x: quat.x, y: quat.y, z: quat.z, w: quat.w,
     });
 
-    const mesh = new THREE.Mesh(new THREE.BoxGeometry(w, 0.5, span), this._mat(COLORS.platformAlt));
-    mesh.position.copy(center);
-    mesh.quaternion.copy(quat);
-    mesh.castShadow = true;
-    mesh.receiveShadow = true;
-    this.scene.add(mesh);
+    const m = this.assets.get('blue', 'platform_4x2x1');
+    if (m) {
+      const s = getSize(m);
+      m.scale.set(w / s.x, 0.5 / s.y, span / s.z);
+      m.position.copy(center);
+      m.quaternion.copy(quat);
+      m.castShadow = true;
+      m.receiveShadow = true;
+      this.scene.add(m);
+    } else {
+      const mesh = new THREE.Mesh(new THREE.BoxGeometry(w, 0.5, span), this._mat(COLORS.platformAlt));
+      mesh.position.copy(center);
+      mesh.quaternion.copy(quat);
+      mesh.castShadow = true;
+      mesh.receiveShadow = true;
+      this.scene.add(mesh);
+    }
   }
 
   _add(obstacle) {
@@ -126,12 +138,19 @@ export class Level {
       respawn: new THREE.Vector3(x, top + PLAYER_LIFT, z),
     });
     // flag
-    const pole = new THREE.Mesh(new THREE.BoxGeometry(0.18, 3, 0.18), this._mat(COLORS.trim));
-    pole.position.set(x + 3.2, top + 1.5, z);
-    this.scene.add(pole);
-    const flag = new THREE.Mesh(new THREE.BoxGeometry(1.3, 0.85, 0.08), this._mat(COLORS.flag));
-    flag.position.set(x + 3.85, top + 2.6, z);
-    this.scene.add(flag);
+    const flag = this.assets.get('green', 'flag_C');
+    if (flag) {
+      fitUniform(flag, 3, 'y');
+      placeBase(flag, x + 3.2, top, z);
+      this.scene.add(flag);
+    } else {
+      const pole = new THREE.Mesh(new THREE.BoxGeometry(0.18, 3, 0.18), this._mat(COLORS.trim));
+      pole.position.set(x + 3.2, top + 1.5, z);
+      this.scene.add(pole);
+      const flagMesh = new THREE.Mesh(new THREE.BoxGeometry(1.3, 0.85, 0.08), this._mat(COLORS.flag));
+      flagMesh.position.set(x + 3.85, top + 2.6, z);
+      this.scene.add(flagMesh);
+    }
   }
 
   // ---- the course ----------------------------------------------------------
@@ -142,7 +161,7 @@ export class Level {
 
     // 1) Start pad  (spans z -4.5 .. 4.5)
     this._platform({ x: 0, z: 0, w: 10, d: 9, top: 0, color: COLORS.start });
-    this._add(new Gate(S, P, { x: 0, y: 0, z: -3.6, width: 7, height: 4.5 }));
+    this._add(new Gate(S, P, this.assets, { x: 0, y: 0, z: -3.6, width: 7, height: 4.5 }));
 
     // 2) Stepping stones — alternating L/R, each a real ~3 m hop (gentle on-ramp)
     this._platform({ x: -2.5, z: 9.5, w: 4, d: 4 }); // gap from start ~3.0
@@ -151,27 +170,27 @@ export class Level {
 
     // 3) Spinning-beam arena (z 25..33). First beam is the gentlest hazard.
     this._platform({ x: 0, z: 29, w: 11, d: 8 });
-    this._add(new SpinningBeam(S, P, { x: 0, y: 0, z: 27, length: 4.6, height: 0.9, speed: 1.4 }));
-    this._add(new SpinningBeam(S, P, { x: 0, y: 0, z: 31.5, length: 5, height: 1.4, speed: -1.4, phase: Math.PI / 2 }));
-    this._add(new TubeArch(S, P, { x: 0, y: 0.2, z: 29, radius: 4, color: 0xff5a4d }));
+    this._add(new SpinningBeam(S, P, this.assets, { x: 0, y: 0, z: 27, length: 4.6, height: 0.9, speed: 1.4 }));
+    this._add(new SpinningBeam(S, P, this.assets, { x: 0, y: 0, z: 31.5, length: 5, height: 1.4, speed: -1.4, phase: Math.PI / 2 }));
+    this._add(new TubeArch(S, P, this.assets, { x: 0, y: 0.2, z: 29, radius: 4, color: 0xff5a4d }));
     this._checkpoint(0, 29, 0);
 
     // 4) Conveyor pushing back (belt collider is the floor; deco base sits lower).
     //    Arena ends z33; belt spans z33..43.
     this._platform({ x: 0, z: 38, w: 6, d: 10, top: -0.08, color: COLORS.platformAlt, collider: false });
-    this._add(new Conveyor(S, P, { x: 0, y: 0, z: 38, w: 5.6, d: 9.6, dir: 'z', speed: -3.5 }));
+    this._add(new Conveyor(S, P, this.assets, { x: 0, y: 0, z: 38, w: 5.6, d: 9.6, dir: 'z', speed: -3.5 }));
 
     // 5) Moving platforms — shuttle along Z so the FORWARD gap opens/closes.
     this._platform({ x: 0, z: 46, w: 6, d: 5 }); // approach pad (z 43.5..48.5)
-    this._add(new MovingPlatform(S, P, { x: 0, y: 0, z: 52, w: 4.5, d: 4.5, axis: 'z', amplitude: 1.6, speed: 1.1 }));
-    this._add(new MovingPlatform(S, P, { x: 0, y: 0, z: 58.5, w: 4.5, d: 4.5, axis: 'z', amplitude: 1.6, speed: 1.1, phase: Math.PI }));
+    this._add(new MovingPlatform(S, P, this.assets, { x: 0, y: 0, z: 52, w: 4.5, d: 4.5, axis: 'z', amplitude: 1.6, speed: 1.1 }));
+    this._add(new MovingPlatform(S, P, this.assets, { x: 0, y: 0, z: 58.5, w: 4.5, d: 4.5, axis: 'z', amplitude: 1.6, speed: 1.1, phase: Math.PI }));
     this._platform({ x: 0, z: 64.5, w: 8, d: 6 }); // landing (z 61.5..67.5)
     this._checkpoint(0, 64.5, 0);
 
     // 6) Pendulum bridge — vertical-arc timing for variety (z 66.5..75.5)
     this._platform({ x: 0, z: 71, w: 5, d: 9 });
-    this._add(new Pendulum(S, P, { x: 0, y: 0, z: 68.5, armLength: 3, swing: 0.8, speed: 1.6 }));
-    this._add(new Pendulum(S, P, { x: 0, y: 0, z: 73.5, armLength: 3, swing: 0.8, speed: 1.6, phase: Math.PI }));
+    this._add(new Pendulum(S, P, this.assets, { x: 0, y: 0, z: 68.5, armLength: 3, swing: 0.8, speed: 1.6 }));
+    this._add(new Pendulum(S, P, this.assets, { x: 0, y: 0, z: 73.5, armLength: 3, swing: 0.8, speed: 1.6, phase: Math.PI }));
 
     // 7) Ramp up to the high tier, then a wide rest pad before the climax.
     this._ramp({ x: 0, z: 77.5, w: 6, fromTop: 0, toTop: 2, length: 4 });
@@ -180,22 +199,26 @@ export class Level {
 
     // 8) Spike-roller corridor (z 83..97). Rollers escalate; mid checkpoint.
     this._platform({ x: 0, z: 90, w: 6, d: 14, top: 2, color: COLORS.platformAlt });
-    this._add(new SpikeRoller(S, P, { x: 0, y: 2, z: 86.5, span: 5.2, radius: 0.6, range: 3, speed: 1.4 }));
-    this._add(new SpikeRoller(S, P, { x: 0, y: 2, z: 93.5, span: 5.2, radius: 0.6, range: 3, speed: 1.8, phase: Math.PI }));
-    this._add(new Gear(S, P, { x: -4, y: 3, z: 90, radius: 1.6, speed: 1.2 }));
-    this._add(new Gear(S, P, { x: 4, y: 3, z: 90, radius: 1.6, speed: -1.2 }));
+    this._add(new SpikeRoller(S, P, this.assets, { x: 0, y: 2, z: 86.5, span: 5.2, radius: 0.6, range: 3, speed: 1.4 }));
+    this._add(new SpikeRoller(S, P, this.assets, { x: 0, y: 2, z: 93.5, span: 5.2, radius: 0.6, range: 3, speed: 1.8, phase: Math.PI }));
+    this._add(new Gear(S, P, this.assets, { x: -4, y: 3, z: 90, radius: 1.6, speed: 1.2 }));
+    this._add(new Gear(S, P, this.assets, { x: 4, y: 3, z: 90, radius: 1.6, speed: -1.2 }));
     this._checkpoint(0, 90, 2); // relief between the two rollers
 
     // 9) Finish podium (z 97.5..106.5)
     this._platform({ x: 0, z: 102, w: 10, d: 9, top: 2, color: COLORS.finish });
-    this._add(new Gate(S, P, { x: 0, y: 2, z: 105.5, width: 7, height: 4.5, color: COLORS.finish }));
+    this._add(new Gate(S, P, this.assets, { x: 0, y: 2, z: 105.5, width: 7, height: 4.5, color: COLORS.finish }));
     this._buildCrown(0, 102, 2);
   }
 
   _buildCrown(x, z, top) {
-    let crown = this.assets.get('crown');
-    if (crown) {
-      crown.scale.setScalar(1.5);
+    const star = this.assets.get('yellow', 'star');
+    let crown;
+    if (star) {
+      fitUniform(star, 1.6);
+      star.castShadow = true;
+      this.crownMesh = star;
+      crown = star;
     } else {
       crown = new THREE.Group();
       const gold = new THREE.MeshStandardMaterial({ color: 0xffd23f, metalness: 0.6, roughness: 0.25 });
@@ -208,9 +231,9 @@ export class Level {
         spike.position.set(Math.cos(a) * 0.5, 0.35, Math.sin(a) * 0.5);
         crown.add(spike);
       }
+      crown.castShadow = true;
+      this.crownMesh = crown;
     }
-    crown.castShadow = true;
-    this.crownMesh = crown;
     this.crownBaseY = top + 1.5;
     crown.position.set(x, this.crownBaseY, z);
     this.scene.add(crown);
