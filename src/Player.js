@@ -94,7 +94,8 @@ export class Player {
   }
 
   // Compute desired movement and queue it. Must run BEFORE physics.step().
-  preStep(dt, input, camera) {
+  // `surfaceVel` is an optional THREE.Vector3 from conveyors / moving platforms.
+  preStep(dt, input, camera, surfaceVel) {
     // Camera-relative input direction on the XZ plane.
     const dir = this._tmp.set(0, 0, 0);
     if (input.forward) dir.add(camera.getForward());
@@ -121,10 +122,14 @@ export class Player {
     }
     this._wasJump = input.jump;
 
+    // Conveyor push / moving-platform carry is added on top of input (no smoothing).
+    const svx = surfaceVel ? surfaceVel.x : 0;
+    const svz = surfaceVel ? surfaceVel.z : 0;
+
     const desired = {
-      x: this.hVel.x * dt,
+      x: (this.hVel.x + svx) * dt,
       y: this.vVel * dt,
-      z: this.hVel.z * dt,
+      z: (this.hVel.z + svz) * dt,
     };
 
     this.controller.computeColliderMovement(this.collider, desired);

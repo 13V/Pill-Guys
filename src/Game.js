@@ -123,10 +123,12 @@ export class Game {
     const dt = Math.min(this.clock.getDelta(), 1 / 30);
 
     if (this.state === STATE.PLAYING) {
-      this.player.preStep(dt, this.input, this.followCamera);
+      // Animate/queue moving obstacles first, then read what's underfoot.
+      this.level.update(dt, this.elapsed);
+      const surfaceVel = this.level.surfaceVelocity(this.player);
+      this.player.preStep(dt, this.input, this.followCamera, surfaceVel);
       this.physics.step();
       this.player.postStep(dt);
-      this.level.update(dt, this.elapsed);
 
       const pos = this.player.position;
       if (this.level.checkHazard(pos) || pos.y < CONFIG.respawnY) {

@@ -3,8 +3,25 @@
 A chaotic, **Fall Guys-style** physics party platformer that runs in the
 browser — plus a companion **Solana token (PILL)** scaffold.
 
-Wobble your little pill through a floating obstacle course, dodge the spinning
-beams, hit the checkpoints, and grab the crown to qualify.
+Wobble your little pill through a winding, elevated obstacle course — dodge
+spinning beams, survive conveyor belts, ride moving platforms, time the spike
+rollers, climb the ramp, hit the checkpoints, and grab the crown to qualify.
+
+### Obstacles in the course
+
+Modular obstacle classes live in [`src/obstacles.js`](./src/obstacles.js):
+
+| Obstacle | Behaviour |
+| -------- | --------- |
+| **Spinning beam** | Sweeps a horizontal circle; touch = respawn |
+| **Conveyor belt** | Pushes whatever stands on it (run against it!) |
+| **Moving platform** | Kinematic platform that carries you as it slides |
+| **Spike roller** | Spiked drum rolling across the path — jump it |
+| **Ramp** | Angled surface up to the high tier |
+| **Gears / tube arches / gates** | Decorative KayKit-style flavour |
+
+The course itself is assembled declaratively in [`src/Level.js`](./src/Level.js),
+so adding or rearranging sections is straightforward.
 
 > Fresh-start foundation: a polished, playable prototype you can build a full
 > game on. Not a finished product (yet).
@@ -71,7 +88,8 @@ cd token && npm install && npm run create-token   # devnet by default
 │   ├── Game.js             # scene, lights, loop, state machine
 │   ├── PhysicsWorld.js     # Rapier wrapper
 │   ├── Player.js           # pill + kinematic character controller
-│   ├── Level.js            # obstacle course, hazards, checkpoints, finish
+│   ├── Level.js            # assembles the winding course
+│   ├── obstacles.js        # beams, conveyors, moving platforms, rollers, props
 │   ├── FollowCamera.js     # orbit/zoom follow camera
 │   ├── Assets.js           # GLTF loader + KayKit manifest
 │   ├── Input.js            # keyboard
@@ -84,7 +102,7 @@ cd token && npm install && npm run create-token   # devnet by default
 ## Roadmap ideas
 
 - Real KayKit models for player, hammers, platforms
-- More obstacle types (conveyor belts, swinging axes, push bars, see-saws)
+- More obstacle types (swinging axes, push bars, see-saws, wrecking balls)
 - Multiplayer races (WebRTC / authoritative server)
 - Skins / cosmetics gated by holding PILL
 - Leaderboards with on-chain time attestations
