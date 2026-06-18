@@ -26,7 +26,7 @@ export const coins = [
   { x: 74, y: 6.4, z: 3 },     // risky lane landing                   — reward
 
   { x: 80, y: 6.2, z: 0 },     // G rejoin hub 2
-  { x: 91, y: 11.4, z: 0 },    // atop the finish tower
+  { x: 88, y: 11.4, z: 0 },    // atop the finish tower
 ];
 
 export const decor = [

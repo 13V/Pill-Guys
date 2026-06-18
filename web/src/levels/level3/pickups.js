@@ -1,26 +1,37 @@
-// Level 3 COINS + decor — "Furnace Gaps". 12 coins.
-// Coins arc over the real gaps to reward each jump, ride the conveyor, climb onto
-// the raised section, and trace both spring arcs up to the finish. Decor keeps
-// the on-spec look (red pipe arch, grey gantry, yellow arrows, green portal).
+// Level 3 COINS + decor — "Furnace Gaps". 14 coins.
+//
+// Coins reward each route choice (see ../../../MULTI_ROUTE_DESIGN.md): the SAFE lane
+// of each split has a single normal coin; the RISKY lane has TWO coins (a bigger
+// payout) bracketing its hazard. The rest trace the spine: over the early real
+// gaps, riding the conveyor, and up each spring arc to the finish.
 export const coins = [
-  { x: 3,  y: 6.4, z: 0 },    // spawn hub A
-  { x: 8,  y: 7.2, z: 0 },    // arc over gap A->B
-  { x: 13, y: 7.2, z: 0 },    // arc over gap B->C
-  { x: 16, y: 6.4, z: 0 },    // landing C
-  { x: 22, y: 6.4, z: 0 },    // spikeblock hub D (safe center)
-  { x: 30, y: 6.4, z: 0 },    // riding the conveyor E
-  { x: 35, y: 7.2, z: 0 },    // arc over the conveyor-fed gap E->F
-  { x: 43, y: 6.4, z: 0 },    // spring #1 pad G
-  { x: 47, y: 9.4, z: 0 },    // up on the raised hub H (top 8)
-  { x: 52, y: 6.4, z: 0 },    // drop landing I
-  { x: 55, y: 8.4, z: 0 },    // rising off spring #2
-  { x: 56, y: 11.4, z: 0 },   // atop the finish tower K
+  { x: 3,  y: 6.4, z: 0 },     // spawn hub A
+  { x: 9,  y: 7.2, z: 0 },     // arc over gap A->B
+  { x: 15, y: 7.2, z: 0 },     // arc over gap B->C
+
+  // BRANCH 1 rewards (top 5)
+  { x: 30, y: 6.4, z: -3 },    // SAFE far lane — 1 normal coin
+  { x: 27, y: 6.8, z: 3 },     // RISKY near lane — coin before the gauntlet
+  { x: 33, y: 6.8, z: 3 },     // RISKY near lane — coin after the gauntlet (2 = bigger reward)
+
+  { x: 37, y: 6.4, z: 0 },     // B1 rejoin hub R1
+  { x: 45, y: 6.4, z: 0 },     // riding the conveyor E
+  { x: 53, y: 6.4, z: 0 },     // spring #1 pad F
+
+  // BRANCH 2 rewards (top 8, raised)
+  { x: 69, y: 9.4, z: -3 },    // SAFE far lane — 1 normal coin
+  { x: 66, y: 9.8, z: 3 },     // RISKY near lane — coin before the pit
+  { x: 73, y: 9.8, z: 3 },     // RISKY near lane — coin after the lethal-saw pit (2 = bigger reward)
+
+  { x: 79, y: 8.4, z: 0 },     // rising off spring #2 (R2 -> finish)
+  { x: 84, y: 11.4, z: 0 },    // atop the finish tower K
 ];
 export const decor = [
   { kind: 'arrow', cx: 5, cz: 0 },          // go right
-  { kind: 'gantry', cx: 16 },               // grey truss landmark over the early gaps
-  { kind: 'pipeArch', cx: 22 },             // red arch framing the spikeblock hub
-  { kind: 'portal', cx: 22, cz: 0 },        // green portal at the hub
-  { kind: 'arrow', cx: 42, cz: 0 },         // point at spring #1
-  { kind: 'arrow', cx: 47, cz: 0, top: 8 }, // on the raised hub, point onward
+  { kind: 'gantry', cx: 15 },               // grey truss landmark over the early gaps
+  { kind: 'pipeArch', cx: 21 },             // red arch framing the B1 entry hub
+  { kind: 'portal', cx: 21, cz: 0 },        // green portal at the hub
+  { kind: 'arrow', cx: 24, cz: -3 },        // signpost the SAFE lane of branch 1
+  { kind: 'arrow', cx: 52, cz: 0 },         // point at spring #1
+  { kind: 'arrow', cx: 62, cz: -3, top: 8 },// signpost the SAFE lane of branch 2 (raised)
 ];
