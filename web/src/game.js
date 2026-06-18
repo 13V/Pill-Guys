@@ -7,25 +7,38 @@ import { createPlayer } from './player.js';
 import { createFollowCamera } from './followCamera.js';
 import { createHUD } from './hud.js';
 import { createInteractions } from './interactions.js';
+import { createEvents } from './events.js';
+import { createAudio } from './audio.js';
+import { createParticles } from './effects/particles.js';
+import { createWorldAnim } from './effects/worldAnim.js';
+import { createCoinJuice } from './effects/coins.js';
 
 // Playable entry: visual level + Rapier physics + character + camera + HUD + interactions.
 async function start() {
   const { scene, camera, renderer, controls } = createScene();
   if (controls) controls.enabled = false; // follow camera drives the view in-game
 
-  await buildVisualLevel(scene);
+  const level = await buildVisualLevel(scene);
 
   const physics = await initPhysics();
   const world = buildColliders(physics, scene); // { spawn, coins }
+  const events = createEvents();
   const input = createInput();
-  const player = createPlayer(scene, physics, input, world.spawn);
+  const player = createPlayer(scene, physics, input, world.spawn, events);
   // Camera directly behind (+Z) and above so its yaw is 0: the strip reads
   // left->right and "right" maps to world +X with no diagonal drift on the
   // narrow decks. (An angled offset.x makes movement diagonal and walks the
   // pill off the edge of the conveyor.)
   const followCam = createFollowCamera(camera, player, { offset: { x: 0, y: 7.5, z: 11.5 }, lookBias: { x: 0, y: 1, z: 0 } });
   const hud = createHUD(world.coins ? world.coins.length : 0);
-  const interactions = createInteractions({ physics, player, hud, world });
+  const interactions = createInteractions({ physics, player, hud, world, events });
+
+  // Juice: synthesized SFX + visual effects, all driven off the event bus / scene.
+  const audio = createAudio(events);
+  const particles = createParticles(scene, events);
+  const worldAnim = createWorldAnim(level);
+  const coinJuice = createCoinJuice(world, events);
+  if (audio && audio.resume) audio.resume();
 
   hud.onRestart(() => {
     player.respawn();
@@ -60,7 +73,7 @@ async function start() {
   // Test/debug hooks. step()/testWarp()/pause() let the headless integration
   // test drive the sim deterministically (headless Chromium throttles rAF).
   window.__game = {
-    scene, camera, physics, player, world, hud, input, followCam,
+    scene, camera, physics, player, world, hud, input, followCam, events,
     pause() { simRunning = false; },
     resume() { simRunning = true; },
     step(n = 1) {
@@ -92,6 +105,11 @@ async function start() {
       }
       followCam.update(dt);
     }
+    // Visual juice advances every frame, independent of the sim-pause the
+    // headless test uses (so the showcase + screenshots stay animated).
+    particles.update(dt);
+    worldAnim.update(dt);
+    coinJuice.update(dt);
     renderer.render(scene, camera);
     requestAnimationFrame(frame);
   }

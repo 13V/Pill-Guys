@@ -1,25 +1,24 @@
-// INTERACTIONS — gameplay reactions to sensor overlaps. Owned by the INTERACTIONS+HUD agent.
+// INTERACTIONS — gameplay reactions to sensor overlaps. (Integrator-wired to emit events.)
 //
-// export function createInteractions({ physics, player, hud, world }) -> { update() }
-//   world = the object returned by buildColliders (has .coins: [{name, object3D}]).
+// export function createInteractions({ physics, player, hud, world, events }) -> { update() }
+//   world = buildColliders' return (.coins: [{name, object3D}]). events = src/events.js bus.
 //
-// update() is called every fixed step AFTER physics.stepOnce():
-//   const names = physics.sensorsOverlapping(player.collider);  // array of region names currently overlapping
-//   - 'death'     -> player.respawn(); hud.flashDeath();        (also covers the fall-off-the-world floor sensor)
-//   - 'spring'    -> player.launch(SPRING_SPEED ~ 16);          (debounce: only fire on ENTER, not every frame)
-//   - 'conveyor'  -> player.setConveyor({x: CONVEYOR_SPEED ~ 4, z:0});  else player.setConveyor(null)
-//   - 'coin:N'    -> if not already collected: hide world.coins[N].object3D (visible=false), hud.addCoin()
-//   - 'finish'    -> hud.win() once
-// Track collected coins / one-shot flags so each fires appropriately. Guard against player.collider being null.
+// Emits gameplay events so audio/particles/coin-juice can react without coupling:
+//   'jump'  (emitted by the player)        'coin'   {index, position, object3D}
+//   'spring'                               'death'  {position}
+//   'finish'
+// Coins are NOT hidden here anymore — the coin-juice effect plays a collect "pop"
+// then hides them. We still mark them collected + bump the HUD exactly once.
 
 const SPRING_SPEED = 16;
 const CONVEYOR_SPEED = 4;
 
-export function createInteractions({ physics, player, hud, world }) {
+export function createInteractions({ physics, player, hud, world, events }) {
   const coins = (world && world.coins) || [];
   const collected = new Set(); // coin indices already picked up
   let wasOnSpring = false; // debounce: only launch on the frame we ENTER the spring
   let won = false; // finish fires exactly once
+  const emit = (t, p) => events && events.emit && events.emit(t, p);
 
   return {
     update() {
@@ -47,8 +46,10 @@ export function createInteractions({ physics, player, hud, world }) {
           if (!Number.isNaN(idx) && !collected.has(idx)) {
             collected.add(idx);
             const entry = coins[idx];
-            if (entry && entry.object3D) entry.object3D.visible = false;
+            const obj = entry && entry.object3D;
+            const p = obj ? obj.position : player.translation();
             hud.addCoin();
+            emit('coin', { index: idx, object3D: obj, position: { x: p.x, y: p.y, z: p.z } });
           }
         }
       }
@@ -56,6 +57,8 @@ export function createInteractions({ physics, player, hud, world }) {
       // Death: respawn + flash. Takes precedence; skip the rest this frame so
       // we don't immediately re-launch/convey the just-respawned player.
       if (onDeath) {
+        const t = player.translation();
+        emit('death', { position: { x: t.x, y: t.y, z: t.z } });
         player.respawn();
         hud.flashDeath();
         wasOnSpring = false;
@@ -66,6 +69,7 @@ export function createInteractions({ physics, player, hud, world }) {
       // Spring: launch only on the frame we enter the pad (rising edge).
       if (onSpring && !wasOnSpring) {
         player.launch(SPRING_SPEED);
+        emit('spring');
       }
       wasOnSpring = onSpring;
 
@@ -80,6 +84,7 @@ export function createInteractions({ physics, player, hud, world }) {
       if (onFinish && !won) {
         won = true;
         hud.win();
+        emit('finish');
       }
     },
   };

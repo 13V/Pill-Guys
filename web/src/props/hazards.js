@@ -31,7 +31,10 @@ export async function build(level) {
   // boards) while the lower teeth (down to ≈1.2) disappear into the slot — only
   // a sliver pokes beneath the 1-cell deck, matching the samples' big floor saw.
   const sawCenterY = top - 0.4; // 4.6
-  await place(level, ['sawblade', 'neutral', SEG.landmark.cx, 0, sawCenterY, 0, 90, 0]);
+  const saw = await place(level, ['sawblade', 'neutral', SEG.landmark.cx, 0, sawCenterY, 0, 90, 0]);
+  // Tag for the world-animation effect: spin the blade in its own plane (local Y
+  // is the disc normal, regardless of the rx=90 tilt) via object.rotateY(speed*dt).
+  if (saw) saw.userData.spin = { localY: true, speed: 6 };
 
   // --- Spring launch on the bridge deck: red pad with a spring sitting in it ---
   await place(level, ['spring_pad', 'red', SEG.bridge.cx, 0, top]);
