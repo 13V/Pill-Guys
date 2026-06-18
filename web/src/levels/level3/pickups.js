@@ -20,7 +20,7 @@ export const coins = [
   { x: 25, y: 6.8, z: 3 },     // RISKY near lane — coin riding the belt into R1 (3 = 3x reward)
 
   { x: 24, y: 6.4, z: 0 },     // R1 rejoin hub (clean, no center block now)
-  { x: 29, y: 6.4, z: 0 },     // riding the conveyor E
+  { x: 29, y: 6.4, z: 3 },     // riding the RISKY spine conveyor (z+3) — rewards the boosted spine lane
   { x: 38, y: 7.6, z: 0 },     // rising off spring #1 (arc up to the raised section)
 
   // BRANCH 2 rewards (raised): SAFE 1 / RISKY 3

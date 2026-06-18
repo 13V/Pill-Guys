@@ -14,14 +14,15 @@
 //
 // Identity kept: lethal-looking saws for menace, a real spike gauntlet, two springs.
 //
-// BRANCH risk/reward (each RISKY lane pays 3x its SAFE sibling — see pickups.js):
-// - BRANCH 1 RISKY lane (z+3, top5): a size-2 spike gauntlet at cx18 -> spikes span
-//   x17..19, with solid lane to run up on (x14..17) and land on (x19..22). The SAFE lane
-//   (z-3) is clear. This is the ONE genuinely lethal, on-the-line challenge. Cones warn.
-// - BRANCH 2 RISKY lane (z+3, top8): a SHORTCUT — a 4u jump-gap (x50..54) over a pit with
-//   a (decorative) sawblade for menace, landing at x54..56 EARLIER than the safe walk's
-//   continuous strip. The leap that clears the gap clears the saw. SAFE lane (z-3) is a
-//   clear, longer strip. Cones warn the risky side.
+// BRANCH risk/reward (each RISKY lane pays 3x its SAFE sibling — see pickups.js). The
+// SHORTCUT on each risky lane is a FORWARD CONVEYOR boost (~12 u/s vs the safe 8); the
+// hazards below are the RISK that earns it (see path.js for the belt layout):
+// - BRANCH 1 RISKY lane (z+3, top5): a size-2 spike gauntlet at cx16 -> spikes span
+//   x15..17, jumped RIGHT off the C hub (takeoff x14) to land on the boost belt (x18..26).
+//   The SAFE lane (z-3) is clear. This is the ONE genuinely lethal, on-the-line challenge.
+// - BRANCH 2 RISKY lane (z+3, top8): a 4u jump-gap (x50..54) over a pit with a (decorative)
+//   sawblade for menace; the leap clears the saw and the lane is otherwise boosted by belts
+//   on either side. SAFE lane (z-3) is a clear, longer walked strip. Cones warn the risky side.
 export const hazards = [
   // entry hub C: decorative saw only (menace; no death sensor => never blocks)
   { kind: 'sawblade', cx: 12, cz: 0 },                       // decorative menace on hub C
