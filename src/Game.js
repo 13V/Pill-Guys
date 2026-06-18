@@ -114,7 +114,7 @@ export class Game {
       new THREE.MeshStandardMaterial({ map: this._checkerTexture(), roughness: 1, metalness: 0 }),
     );
     floor.rotation.x = -Math.PI / 2;
-    floor.position.y = -8;
+    floor.position.y = 0;
     floor.receiveShadow = true;
     this.scene.add(floor);
 

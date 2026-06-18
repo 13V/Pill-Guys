@@ -28,15 +28,16 @@ so adding or rearranging sections is straightforward.
 
 ## Screenshots
 
-![The station diorama](docs/screenshots/hero.png)
+![Voxel terrace structure](docs/screenshots/hero.png)
 
-| Down the deck | Saws & gears | The finish |
+| Front terraces | Stacked tiles | The summit |
 | --- | --- | --- |
-| ![Deck](docs/screenshots/pendulums.png) | ![Saws](docs/screenshots/spike-rollers.png) | ![Finish](docs/screenshots/finish.png) |
+| ![Front](docs/screenshots/pendulums.png) | ![Tiles](docs/screenshots/spike-rollers.png) | ![Summit](docs/screenshots/finish.png) |
 
-_A dense, KayKit-promo-style station diorama — a tiled deck on legs packed with
-platforms, pipes, rails, hazards and props — rendered with the bundled KayKit
-Platformer Pack (EXTRA) models (CC0)._
+_A stacked-tile voxel structure in the KayKit style — terraces at changing
+elevations connected by slopes, climb to the crown — built from the bundled
+KayKit Platformer Pack (EXTRA) models (CC0). On a real GPU it also renders with
+GTAO ambient occlusion + SMAA._
 
 ## Tech
 

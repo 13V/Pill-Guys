@@ -61,13 +61,10 @@ async function shot(name, p) {
 
 const PR = 0.84;
 
-await shot('02-hero.png', { x: 0, y: PR, z: 8, px: 34, py: 30, pz: -8, lx: 0, ly: 0, lz: 26 });
-await shot('03-down.png', { x: 0, y: PR, z: 6, px: 0, py: 9, pz: -8, lx: 0, ly: 1.5, lz: 26 });
-await shot('04-conveyor.png', { x: 0, y: PR, z: 18, px: 14, py: 9, pz: 11, lx: 0, ly: 1, lz: 20 });
-await shot('05-pipe.png', { x: 0, y: PR, z: 24, px: 14, py: 9, pz: 17, lx: 0, ly: 1.5, lz: 25 });
-await shot('06-saws.png', { x: 0, y: PR, z: 30, px: 13, py: 9, pz: 24, lx: 0, ly: 1, lz: 31 });
-await shot('07-ramp.png', { x: 0, y: 2 + PR, z: 39.5, px: 13, py: 9, pz: 33, lx: 0, ly: 2, lz: 40 });
-await shot('08-finish.png', { x: 0, y: 0.5 + PR, z: 46.5, px: 12, py: 8, pz: 40, lx: 0, ly: 1.5, lz: 47.5 });
+await shot('02-hero.png', { x: 0, y: PR, z: -3, px: 22, py: 16, pz: -12, lx: 0, ly: 3, lz: 8 });
+await shot('03-front.png', { x: 0, y: 2 + PR, z: 3, px: 0, py: 8, pz: -14, lx: 0, ly: 3, lz: 9 });
+await shot('04-side.png', { x: 0, y: 4 + PR, z: 9, px: 22, py: 11, pz: 7, lx: 0, ly: 4, lz: 9 });
+await shot('05-summit.png', { x: 0, y: 8 + PR, z: 18, px: 11, py: 13, pz: 25, lx: 0, ly: 7, lz: 17 });
 
 await browser.close();
 console.log('screenshots done ->', OUT);
