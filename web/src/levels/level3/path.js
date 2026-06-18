@@ -66,11 +66,11 @@ export default {
     // FLUSH off H (the void middle still forces a commit).
     { kind: 'platform', cx: 44, cz: 0, w: 6, d: 6, top: 8, rails: true },  // H RAISED LANDING    x:41..47  (spring #1 arc lands here; w6 catch pad)
     { kind: 'strip', x0: 47, x1: 56, z: -3, w: 2, top: 8 },                //   SAFE far lane     x:47..56  (flush off H; CLEAR, full length, walked @8u/s)
-    // RISKY near lane (z+3): run-up (x47..50), the 4u PIT (x50..54, a real jump = the RISK),
-    // then a FORWARD CONVEYOR landing (x54..60) you ride at ~12u/s into the rejoin (the
-    // SHORTCUT). The leap clears the pit + its decorative saw and drops you onto the belt.
-    { kind: 'strip', x0: 47, x1: 50, z: 3,  w: 2, top: 8 },                //   RISKY run-up      x:47..50  (flush off H; 3u run-up to the pit)
-    { kind: 'conveyor', cx: 55, cz: 3, len: 2, w: 4, top: 8 },             //   RISKY belt (+X)   x:54..56  (~12u/s; lands the 4u pit-jump; ENDS at x56 so the 3u drop onto R2 lands cleanly, like the safe path)
+    // RISKY near lane (z+3): ride a long FORWARD CONVEYOR run-up (x47..52, top8) at ~12u/s,
+    // then a boosted leap over the 4u PIT (x52..56, the RISK) that drops you straight onto
+    // the R2 rejoin (top5). The belt is the SHORTCUT; the pit (+ decorative saw) is the risk.
+    { kind: 'conveyor', cx: 49.5, cz: 3, len: 5, w: 4, top: 8 },           //   RISKY belt (+X)   x:47..52  (~12u/s run-up, ridden grounded off H)
+    // (pit x52..56 = a 4u gap; the boosted jump clears it and lands on R2 below)
     { kind: 'platform', cx: 58, cz: 0, w: 4, d: 6, rails: true },          // R2 B2 REJOIN + spring#2 pad  x:56..60  (lanes drop 3u, land flush; w4 d6)
 
     { kind: 'finish',   cx: 64, cz: 0, w: 4, d: 6, top: 10 },              // K finish (d6 win sensor spans z+-3)  x:62..66  (spring #2 lifts +5 & ~7u fwd)
