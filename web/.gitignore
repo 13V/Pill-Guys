@@ -16,4 +16,5 @@ trace[0-9]*.mjs
 !/gameplay.png
 !/deathburst.png
 !/level*.png
+!/route*.png
 /previews/*.png
