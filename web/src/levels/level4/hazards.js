@@ -1,41 +1,49 @@
-// Level 4 HAZARDS + springs — "Fracture Foundry" (multi-route, med-high).
+// Level 4 HAZARDS + springs — "Fracture Foundry" (multi-route, 2nd hardest).
 //
-// Per-lane risk (see ../../../MULTI_ROUTE_DESIGN.md). Hazards live on the RISKY
-// (near, z=+3) lanes; the SAFE (far, z=-3) lanes are clear. Nothing lethal ever
-// sits on the only path — shared hubs carry only decorative (menace-only) saws.
+// Per-lane risk (see ../../../MULTI_ROUTE_DESIGN.md). Real, ON-THE-LINE hazards
+// live on the RISKY (near, z=+3) lanes; the SAFE (far, z=-3) lanes are clear. The
+// only lethal pieces on the shared spine are CENTER spikeblocks that block z≈0
+// (z -0.6..+0.6) on the rejoin hubs — both side lanes (z=±3) clear them by >2u, so
+// you can't bowl down the middle and must commit to a side (the L3 pattern).
 //
-// - Opening (hubs A->B->C): a clean lead-in that lets you commit to a side before
-//   the first split (no centered hazard, so every lane has a fair entry).
-// - BRANCH 1 RISKY lane (z+3): the level's signature SPIKE GAUNTLET, size-4 (cx31;
-//   spike box x29..33, with solid w2 deck to land on at x26..29 and x33..36). The
-//   SAFE lane (z-3) is a clear w2 walk.
-// - D saw hub: one decorative sawblade (NO lethal flag => no death sensor) keeps
-//   the signature "saw hub" look without ever blocking the rejoin.
-// - BRANCH 2 RISKY lane (z+3): a LETHAL sawblade flanking the lane at cz+4.6 — its
-//   death box is z 4.1..5.1, clear of the walked z=3 line, so it punishes a drift
-//   but never blocks the lane. The lane then breaks for a 4u GAP (x68..72, in
-//   path.js). SAFE lane (z-3) is a clear, longer w2 walk.
+// DIFFICULTY (audit fix — L4 > L3): L3's risky lanes each carry ONE on-line threat;
+// L4's carry TWO apiece, over WIDER gaps:
+// - BRANCH 1 RISKY (z+3): a size-4 SPIKE GAUNTLET (cx29; spike box x27..31, land on
+//   the w2 strips at x23..27 and x31..34), IMMEDIATELY followed by a 4u jump-gap
+//   (x34..38) off the w2 mid-landing onto the bridge end (x38..40). Two back-to-back
+//   leaps off narrow w2 decks — strictly harder than L3-B1's single gauntlet.
+// - BRANCH 2 RISKY (z+3): a 4.5u belt-assisted JUMP-GAP (x64.5..69) with a LETHAL
+//   sawblade IN the pit (cx66.5) — the same leap that clears the gap clears the saw
+//   (the L3-B2 pit-saw model). This REPLACES the old off-line cz+4.6 flank saw that
+//   the audit flagged as never threatening the walked line. The gap is 4.5u vs L3's
+//   4u, and lands directly on the rejoin hub.
+// SAFE lanes (z-3) are clear, continuous w2 walks the whole way.
 export const hazards = [
-  // Branch 1 — size-4 spike gauntlet on the RISKY (near) lane only.
-  { kind: 'spikes', cx: 31, cz: 3, size: 4 },            // risky lane gauntlet (land x26..29 & x33..36)
+  // Branch 1 RISKY (near) lane — size-4 spike gauntlet, then (via path.js) a 4u gap.
+  { kind: 'spikes', cx: 29, cz: 3, size: 4 },            // gauntlet (box x27..31; land x23..27 & x31..34)
 
-  // D saw hub — decorative menace only (no lethal flag => no death sensor).
-  { kind: 'sawblade', cx: 41, cz: 1.5 },                 // signature saw hub look; never blocks
+  // D saw hub / rejoin 1 — decorative saw (NO lethal flag => no death sensor) for the
+  // signature "saw hub" look, plus a lethal CENTER spikeblock so you must hold a lane.
+  { kind: 'sawblade', cx: 43, cz: 1.5 },                 // signature saw-hub menace; never blocks a lane
+  { kind: 'spikeblock', cx: 43, cz: 0 },                 // center block (z -0.6..+0.6; side lanes clear by >2u)
 
-  // Branch 2 — LETHAL saw flanking the RISKY lane (off the walked z=3 line).
-  { kind: 'sawblade', cx: 66, cz: 4.6, lethal: true },   // lethal flank (death box z 4.1..5.1; punishes a drift)
+  // Branch 2 RISKY (near) lane — LETHAL sawblade IN the 4.5u pit, ON the walked line.
+  { kind: 'sawblade', cx: 66.5, cz: 3, lethal: true },   // pit saw (death box x64.9..68.1, z2.5..3.5; the gap-leap clears it)
 
-  // Warning cones (decorative): flag the risky lanes' hazards.
-  { kind: 'cone', cx: 28.4, cz: 3 },                     // B1 risky gauntlet entry
-  { kind: 'cone', cx: 33.6, cz: 3 },                     // B1 risky gauntlet exit
-  { kind: 'cone', cx: 64.0, cz: 3.8 },                   // B2 risky lethal-saw lane
-  { kind: 'cone', cx: 69.5, cz: 3 },                     // B2 risky 4u gap edge
+  // G rejoin hub 2 — lethal CENTER spikeblock so you must hold a lane (springs at cx73).
+  { kind: 'spikeblock', cx: 71, cz: 0 },                 // center block (z -0.6..+0.6; side lanes clear by >2u)
+
+  // Warning cones (decorative): flag each risky lane's hazards.
+  { kind: 'cone', cx: 26.4, cz: 3 },                     // B1 risky gauntlet entry
+  { kind: 'cone', cx: 34.6, cz: 3 },                     // B1 risky gap edge (after gauntlet)
+  { kind: 'cone', cx: 63.0, cz: 3 },                     // B2 risky pit edge (run-up end)
+  { kind: 'cone', cx: 69.5, cz: 3 },                     // B2 risky pit landing edge (on hub G)
 ];
 
 // One spring PER LANE on rejoin hub G (cz -3/0/+3), lifting whichever side you
-// committed to up the finish tower (top 5 -> top 10; ~4u forward arc onto the d6 tower).
+// committed to up the finish tower (top 5 -> top 10; ~3u forward arc onto the d6 tower).
 export const springs = [
-  { cx: 81, cz: -3 },                                    // SAFE-lane spring
-  { cx: 81, cz: 0 },                                     // center spring
-  { cx: 81, cz: 3 },                                     // RISKY-lane spring
+  { cx: 73, cz: -3 },                                    // SAFE-lane spring
+  { cx: 73, cz: 0 },                                     // center spring
+  { cx: 73, cz: 3 },                                     // RISKY-lane spring
 ];
