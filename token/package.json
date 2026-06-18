@@ -1,0 +1,19 @@
+{
+  "name": "pill-guys-token",
+  "version": "0.1.0",
+  "description": "Scripts to create and configure the Pill Guys (PILL) SPL token on Solana.",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "create-token": "node create-token.js",
+    "set-metadata": "node set-metadata.js",
+    "revoke-authority": "node revoke-authority.js"
+  },
+  "dependencies": {
+    "@metaplex-foundation/mpl-token-metadata": "^3.3.0",
+    "@metaplex-foundation/umi": "^0.9.2",
+    "@metaplex-foundation/umi-bundle-defaults": "^0.9.2",
+    "@solana/spl-token": "^0.4.8",
+    "@solana/web3.js": "^1.95.3"
+  }
+}

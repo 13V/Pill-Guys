@@ -1,0 +1,23 @@
+# Dependencies
+node_modules/
+token/node_modules/
+
+# Build output
+dist/
+token/dist/
+
+# Solana — NEVER commit keypairs or secrets
+token/keypairs/
+*-keypair.json
+*.keypair.json
+.env
+.env.*
+token/config.json
+token/.mint-address.json
+
+# Editor / OS
+.DS_Store
+.idea/
+.vscode/
+*.log
+npm-debug.log*

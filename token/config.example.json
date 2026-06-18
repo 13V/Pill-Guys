@@ -1,0 +1,10 @@
+{
+  "network": "devnet",
+  "rpcUrl": "",
+  "keypairPath": "./keypairs/payer.json",
+  "decimals": 9,
+  "supply": 1000000000,
+  "mint": "",
+  "revokeMintAuthority": false,
+  "revokeFreezeAuthority": false
+}

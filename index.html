@@ -1,0 +1,47 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+    <title>Pill Guys</title>
+    <meta name="description" content="A chaotic Fall Guys-style obstacle course you can play in your browser." />
+  </head>
+  <body>
+    <div id="app">
+      <canvas id="game"></canvas>
+
+      <!-- HUD -->
+      <div id="hud" class="hidden">
+        <div id="timer">0.00</div>
+        <div id="hint">WASD / Arrows to move &middot; Space to jump &middot; Drag mouse to look</div>
+      </div>
+
+      <!-- Start screen -->
+      <div id="start-screen" class="overlay">
+        <div class="panel">
+          <h1>PILL&nbsp;GUYS</h1>
+          <p class="tagline">Wobble through the course. Don't fall. Don't get bonked.</p>
+          <ul class="controls">
+            <li><b>WASD</b> / <b>Arrows</b> — move</li>
+            <li><b>Space</b> — jump</li>
+            <li><b>Mouse drag</b> — rotate camera &middot; <b>Scroll</b> — zoom</li>
+          </ul>
+          <button id="play-button" class="btn">PLAY</button>
+          <p class="loading" id="loading-text">Loading physics engine…</p>
+        </div>
+      </div>
+
+      <!-- Win screen -->
+      <div id="win-screen" class="overlay hidden">
+        <div class="panel">
+          <h1>QUALIFIED! 🎉</h1>
+          <p class="tagline">You reached the crown.</p>
+          <p class="result">Your time: <span id="final-time">0.00</span>s</p>
+          <button id="restart-button" class="btn">PLAY AGAIN</button>
+        </div>
+      </div>
+    </div>
+
+    <script type="module" src="/src/main.js"></script>
+  </body>
+</html>
