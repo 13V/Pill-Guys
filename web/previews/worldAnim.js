@@ -43,9 +43,12 @@ const beforeOffset = threads && threads.map
   ? { x: threads.map.offset.x, y: threads.map.offset.y }
   : null;
 
-// Allow overriding the pre-advance count via ?steps= so we can render a second
-// time with a different count and confirm the belt keeps moving.
-const steps = Number(new URLSearchParams(location.search).get('steps')) || 150;
+// Allow overriding the pre-advance count via ?steps= so we can render a rest
+// pose (steps=0) or a second count and confirm the belt keeps moving.
+const stepsParam = new URLSearchParams(location.search).get('steps');
+const steps = stepsParam != null && stepsParam !== '' && Number.isFinite(Number(stepsParam))
+  ? Number(stepsParam)
+  : 150;
 
 // ADVANCE A LOT so motion is unmistakable in the still frame.
 for (let i = 0; i < steps; i++) anim.update(1 / 60);
