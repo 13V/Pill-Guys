@@ -26,11 +26,12 @@ export async function build(level) {
   await place(level, ['floor_spikes_4x4x1', 'neutral', SEG.spikes.cx, 0, top]);
 
   // --- Moving hazard: big circular sawblade rising through a deck slot ---
-  // Disc tipped vertical (rx=90). Origin = disc center; dropping it below the
-  // deck buries the bottom teeth so it reads as a saw rising through a slot.
-  // r≈3.4: center at top-0.9 -> top of blade ≈ 7.5, lower arc ≈ 0.7 (in slot).
-  // Aligned across the walkway (face toward camera, spins about the run axis).
-  const sawCenterY = top - 0.9; // 4.1
+  // Disc tipped vertical (rx=90) so it stands like a circular saw, broadside to
+  // the run. Origin = disc center; placing the center just below the deck top
+  // shows ~the top half of the blade (r≈3.4 -> top ≈ 8.0, ~3 cells above the
+  // boards) while the lower teeth (down to ≈1.2) disappear into the slot — only
+  // a sliver pokes beneath the 1-cell deck, matching the samples' big floor saw.
+  const sawCenterY = top - 0.4; // 4.6
   await place(level, ['sawblade', 'neutral', SEG.landmark.cx, 0, sawCenterY, 0, 90, 0]);
 
   // --- Moving hazard: spike roller resting on the conveyor-side of the deck ---
@@ -42,13 +43,13 @@ export async function build(level) {
   await place(level, ['spring', 'neutral', SEG.bridge.cx, 0, top]);
 
   // --- Red cones flagging the hazards (warning markers) ---
-  // Placed on the front edge (toward camera) so they read as caution markers
-  // without being occluded by the spikes/saw behind them.
+  // Set just inside the near (+Z) deck edges so they read as caution markers
+  // flanking the spikes and the saw without being occluded by them.
   const cones = [
-    [SEG.spikes.cx - 1.4, -1.4],
-    [SEG.spikes.cx + 1.4, -1.4],
-    [SEG.landmark.cx - 2.4, -2.4],
-    [SEG.landmark.cx + 2.4, -2.4],
+    [SEG.spikes.cx - 1.7, 1.7],
+    [SEG.spikes.cx + 1.7, 1.7],
+    [SEG.landmark.cx - 2.6, 2.6],
+    [SEG.landmark.cx + 2.6, 2.6],
   ];
   for (const [cx, cz] of cones) {
     await place(level, ['cone', 'red', cx, cz, top]);

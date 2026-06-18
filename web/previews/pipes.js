@@ -5,14 +5,22 @@ import { place } from '../src/assets.js';
 import { DECK, TOWER, SEG } from '../src/layout.js';
 import { build } from '../src/props/pipes.js';
 
-const { scene, render } = createScene();
+const { scene, camera, controls, render } = createScene();
+
+// Frame the gateway closely for verification (does NOT affect the real scene).
+const cx = SEG.landmark.cx;
+const focus = new THREE.Vector3(cx, 8, 0);
+camera.position.set(cx + 16, 13, 18);
+camera.lookAt(focus);
+controls.target.copy(focus);
+controls.update();
 
 const group = new THREE.Group();
 scene.add(group);
 
 async function main() {
   // Reference deck so we can see where the gateway sits.
-  await place(group, ['platform_6x6x1', 'blue', SEG.landmark.cx, 0, DECK.y]);
+  await place(group, ['platform_6x6x1', 'blue', cx, 0, DECK.y]);
   await build(group);
 }
 

@@ -10,8 +10,8 @@ import { build } from '../src/props/hazards.js';
 const { scene, render, camera, controls } = createScene();
 
 // Closer 3/4 view centered on the hazard cluster for clearer seating judgment.
-camera.position.set(34, 18, 26);
-const lookAt = new THREE.Vector3(18, 5.5, 0);
+camera.position.set(33, 17, 27);
+const lookAt = new THREE.Vector3(18, 5, 0);
 camera.lookAt(lookAt);
 if (controls) controls.target.copy(lookAt);
 

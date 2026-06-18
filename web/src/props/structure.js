@@ -137,15 +137,15 @@ export async function build(level) {
   }
 
   // ------------------------------------------------------------- finish tower
-  // pillar_2x2x8 grey tower from the ground; platform_4x4x2 blue finish deck on
-  // top (base at TOWER.deckY = 8, top at 10). Padded rails ring the top edges
-  // EXCEPT the -X side, which is the entry from the bridge/spring.
+  // Tall grey legs carry a platform_4x4x2 blue finish deck high above the strip
+  // (deck base at TOWER.deckY = 8, top at 10). Four corner pillar_2x2x8 legs
+  // frame the tower like the sample finish towers; cross-struts brace them just
+  // under the deck. Padded rails ring the top edges EXCEPT the -X (entry) side.
   {
     const { cx, cz, w, d } = SEG.finish;
-    await place(level, [TALL_LEG, 'neutral', cx, cz, 0]);          // tower core
-    // four corner legs too, so the 4x4 deck reads well supported
-    await legs(level, cx, cz, 1.2, TALL_LEG);
+    await legs(level, cx, cz, 1.2, TALL_LEG);   // four corner legs, flush to deck corners
     await place(level, ['platform_4x4x2', 'blue', cx, cz, TOWER.deckY]);
+    await underBracing(level, cx, cz, w / 2, d / 2, TOWER.deckY); // truss under the deck
 
     const top = TOWER.deckTop;                                     // y = 10
     await railEdge(level, 'padded', cx, cz + d / 2, 'z', +1, w, top);  // +Z edge

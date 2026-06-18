@@ -10,33 +10,39 @@ import { place } from '../assets.js';
 import { DECK, TOWER, SEG } from '../layout.js';
 
 // Per-collectible glow colors (the emissive tint we paint onto the pickups so
-// they read as "energized" against the matte plastic everything else).
+// they read as "energized" against the matte plastic everything else). Bright,
+// saturated tints so the emission survives the scene's ACES tonemapping + IBL.
 const GLOW = {
-  yellow: 0xffcf33,
-  blue: 0x3aa0ff,
-  red: 0xff4d4d,
-  green: 0x49e06a,
+  yellow: 0xffd21a,
+  blue: 0x37a6ff,
+  red: 0xff3636,
+  green: 0x3fe65f,
 };
 
-// Place a collectible and make it glow. We CLONE each mesh material first so we
-// never mutate the shared loader cache (other placements of the same model stay
-// matte). Returns the placed object.
-async function placeGlow(level, spec, glowColor, intensity = 0.6) {
+// Place a collectible and make it GLOW. The KayKit pickups are a single
+// MeshStandardMaterial driven by the shared atlas; we CLONE each mesh material
+// first (so we never mutate the loader's shared cache — other placements of the
+// same model stay matte), then paint on an emissive tint. emissiveIntensity is
+// pushed high (≈1.4) and roughness nudged down so the pickups read as lit
+// against the bright studio environment. Returns the placed object.
+async function placeGlow(level, spec, glowColor, intensity = 1.4) {
   const obj = await place(level, spec);
   if (!obj) return null;
   const emissive = new THREE.Color(glowColor);
   obj.traverse((o) => {
     if (!o.isMesh || !o.material) return;
     const mats = Array.isArray(o.material) ? o.material : [o.material];
-    o.material = mats.map((m) => {
+    const cloned = mats.map((m) => {
       const c = m.clone();
       if ('emissive' in c) {
         c.emissive = emissive.clone();
         c.emissiveIntensity = intensity;
       }
+      if ('roughness' in c) c.roughness = Math.min(c.roughness ?? 1, 0.25);
+      c.needsUpdate = true;
       return c;
     });
-    if (!Array.isArray(o.material)) o.material = o.material[0];
+    o.material = Array.isArray(o.material) ? cloned : cloned[0];
   });
   return obj;
 }
@@ -49,20 +55,24 @@ export async function build(level) {
   //    falling y reads as a tossed arc. They glow yellow.
   // ----------------------------------------------------------------------
   const starArc = [
-    // [name, color, x, z, y, ry]
-    ['star', 'yellow', 7.5, 0, 6.5, -18],
-    ['star', 'yellow', 9.0, 0, 7.0, -8],
-    ['star', 'yellow', 10.5, 0, 7.25, 6],
-    ['star', 'yellow', 12.0, 0, 6.7, 16],
+    // [name, color, x, z, y, ry] — a 5-star toss centered on the conveyor deck
+    // (x≈10), apex over the middle, gently fanned via ry so they catch light.
+    ['star', 'yellow', 8.0, 0, 6.5, -22],
+    ['star', 'yellow', 9.0, 0, 7.05, -11],
+    ['star', 'yellow', 10.0, 0, 7.3, 0],
+    ['star', 'yellow', 11.0, 0, 7.05, 11],
+    ['star', 'yellow', 12.0, 0, 6.5, 22],
   ];
-  for (const s of starArc) await placeGlow(level, s, GLOW.yellow, 0.65);
+  for (const s of starArc) await placeGlow(level, s, GLOW.yellow, 1.5);
 
   // A few bonus pickups elsewhere so the level isn't single-note:
   // a blue diamond floating near the start approach, a green power-up over the
   // spikes beat, and a red heart tucked near the finish climb.
-  await placeGlow(level, ['diamond', 'blue', 5, 0, 7.0, 0], GLOW.blue, 0.6);
-  await placeGlow(level, ['power', 'green', 16.5, 0, 6.8, 0], GLOW.green, 0.6);
-  await placeGlow(level, ['heart', 'red', 24, 0, 6.6, 0], GLOW.red, 0.6);
+  await placeGlow(level, ['diamond', 'blue', 5.5, 0, 7.0, 0], GLOW.blue, 1.4);
+  await placeGlow(level, ['power', 'green', 16.5, 0, 6.9, 0], GLOW.green, 1.4);
+  // Red heart hovering on the finish approach, at finish-deck height so it leads
+  // the player up into the gate rather than floating in the gap below.
+  await placeGlow(level, ['heart', 'red', 25.4, 0, TOWER.deckTop + 0.9, 0], GLOW.red, 1.4);
 
   // ----------------------------------------------------------------------
   // 2. OVERHEAD GANTRY / sign-bridge spanning the walkway at x≈13.
@@ -88,12 +98,14 @@ export async function build(level) {
   for (const z of [-3, -1, 1, 3]) {
     await place(level, ['strut_horizontal', 'neutral', gx, z, beamY, 90]);
   }
-  // Sign hung at the center of the beam, facing the camera/approach.
-  await place(level, ['sign', 'neutral', gx, 0, beamY + 0.5, 0]);
-  // Blue diamonds perched on the beam crown (matches the sample's row of
-  // collectibles on top of the gantry). Glow them blue.
-  for (const z of [-2.4, 0, 2.4]) {
-    await placeGlow(level, ['diamond', 'blue', gx, z, beamY + 1.0, 0], GLOW.blue, 0.6);
+  // Sign mounted on the beam, facing the approach (down the run). Sits just
+  // atop the beam so it reads as hung from the gantry.
+  await place(level, ['sign', 'neutral', gx, 0, beamY + 0.25, 0]);
+  // Blue diamonds perched along the beam crown (matches the sample's row of
+  // collectibles on top of the gantry). Raised clear of the beam + sign and
+  // spaced across Z so the row reads. Glow them blue.
+  for (const z of [-2.6, 2.6]) {
+    await placeGlow(level, ['diamond', 'blue', gx, z, beamY + 0.95, 0], GLOW.blue, 1.4);
   }
 
   // ----------------------------------------------------------------------
