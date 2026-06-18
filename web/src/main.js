@@ -1,28 +1,24 @@
 import * as THREE from 'three';
 import { createScene } from './scene.js';
-import { place } from './assets.js';
-import { PLACEMENTS } from './level.js';
+import * as structure from './props/structure.js';
+import * as hazards from './props/hazards.js';
+import * as pipes from './props/pipes.js';
+import * as decor from './props/decor.js';
 
 const { scene, render } = createScene();
 
-async function buildLevel() {
-  const level = new THREE.Group();
-  scene.add(level);
+const level = new THREE.Group();
+scene.add(level);
 
-  // Load every placement (in parallel; the loader caches by model).
-  await Promise.all(PLACEMENTS.map((p) => place(level, p)));
+// Each module owns one concern and exposes async build(level).
+const modules = [structure, hazards, pipes, decor];
+await Promise.all(modules.map((m) => m.build?.(level)));
 
-  render();
-  // Signal for the headless screenshot tool that the scene is ready.
-  window.__ready = true;
-  console.log(`[level] built ${level.children.length} / ${PLACEMENTS.length} pieces`);
-}
+render();
+window.__ready = true;
+console.log(`[main] level built (${level.children.length} groups/pieces)`);
 
-buildLevel();
-
-// Interactive loop (orbit controls) for live viewing in the browser.
-function loop() {
+(function loop() {
   render();
   requestAnimationFrame(loop);
-}
-requestAnimationFrame(loop);
+})();

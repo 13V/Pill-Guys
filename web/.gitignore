@@ -2,3 +2,8 @@ node_modules/
 dist/
 .vite/
 *.log
+
+# scratch render outputs from the polish agents (keep the official preview.png)
+/*.png
+!/preview.png
+/previews/*.png

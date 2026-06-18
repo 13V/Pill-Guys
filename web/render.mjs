@@ -5,8 +5,9 @@ import { spawn } from 'node:child_process';
 import process from 'node:process';
 import puppeteer from 'puppeteer';
 
-const PORT = 5179;
-const URL = `http://localhost:${PORT}/`;
+const PORT = Number(process.env.RENDER_PORT) || 5179;
+const ENTRY = process.env.RENDER_ENTRY || '/';
+const URL = `http://localhost:${PORT}${ENTRY}`;
 const OUT = process.argv[2] || 'preview.png';
 
 // Spawn vite directly (not via npx) in its own process group so we can reliably
