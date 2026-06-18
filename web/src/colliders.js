@@ -38,6 +38,19 @@ function makeCoinMesh(x, y, z) {
 }
 
 export function buildColliders(physics, scene) {
+  // The kinematic character (player) collides with FIXED bodies, but Rapier's
+  // default ActiveCollisionTypes do NOT include KINEMATIC_FIXED — so a kinematic
+  // collider never registers intersections with our (fixed) sensor bodies. Turn
+  // KINEMATIC_FIXED on for every sensor so physics.sensorsOverlapping(player.collider)
+  // actually reports death/spring/conveyor/finish/coin overlaps. addSensorBox returns
+  // the collider, so we can flip this without touching physics.js.
+  const ALL = physics.RAPIER.ActiveCollisionTypes.ALL;
+  const sensor = (cx, cy, cz, hx, hy, hz, name) => {
+    const col = physics.addSensorBox(cx, cy, cz, hx, hy, hz, name);
+    col.setActiveCollisionTypes(ALL);
+    return col;
+  };
+
   // ------------------------------------------------------------------
   // 1) SOLID DECK COLLIDERS — top surface at the walking height.
   // ------------------------------------------------------------------
@@ -73,19 +86,19 @@ export function buildColliders(physics, scene) {
   // 3) SENSOR REGIONS — gameplay triggers, ~0.6 above the deck tops.
   // ------------------------------------------------------------------
   // Wide kill floor far below: falling off the world respawns the player.
-  physics.addSensorBox(13, -6, 0, 60, 1, 40, 'death');
+  sensor(13, -6, 0, 60, 1, 40, 'death');
 
   // Spike deck: thin death slab just above its surface.
-  physics.addSensorBox(SEG.spikes.cx, DECK.top + 0.6, SEG.spikes.cz, 2, 0.5, 2, 'death');
+  sensor(SEG.spikes.cx, DECK.top + 0.6, SEG.spikes.cz, 2, 0.5, 2, 'death');
 
   // Bridge: small spring launch pad.
-  physics.addSensorBox(SEG.bridge.cx, DECK.top + 0.6, SEG.bridge.cz, 0.9, 0.5, 0.9, 'spring');
+  sensor(SEG.bridge.cx, DECK.top + 0.6, SEG.bridge.cz, 0.9, 0.5, 0.9, 'spring');
 
   // Conveyor: band covering the full 8(x) x 4(z) deck just above its surface.
-  physics.addSensorBox(SEG.conveyor.cx, DECK.top + 0.4, SEG.conveyor.cz, 4, 0.4, 2, 'conveyor');
+  sensor(SEG.conveyor.cx, DECK.top + 0.4, SEG.conveyor.cz, 4, 0.4, 2, 'conveyor');
 
   // Finish: trigger over the finish deck at the tower top.
-  physics.addSensorBox(SEG.finish.cx, TOWER.deckTop + 0.6, SEG.finish.cz, 2, 0.6, 2, 'finish');
+  sensor(SEG.finish.cx, TOWER.deckTop + 0.6, SEG.finish.cz, 2, 0.6, 2, 'finish');
 
   // ------------------------------------------------------------------
   // 4) COINS — 'coin:N' sensors + matching glowing meshes (coins[N] <-> coin:N).
@@ -106,7 +119,7 @@ export function buildColliders(physics, scene) {
 
   const coins = [];
   coinSpots.forEach((p, i) => {
-    physics.addSensorBox(p.x, p.y, p.z, 0.5, 0.5, 0.5, `coin:${i}`);
+    sensor(p.x, p.y, p.z, 0.5, 0.5, 0.5, `coin:${i}`);
     const mesh = makeCoinMesh(p.x, p.y, p.z);
     mesh.name = `coin:${i}`;
     scene.add(mesh);
