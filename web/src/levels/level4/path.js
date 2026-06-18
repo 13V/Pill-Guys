@@ -1,22 +1,23 @@
-// Level 4 PATH — "Fracture Foundry" (med-high, ~88u). Built to R&D-verified limits
+// Level 4 PATH — "Fracture Foundry" (med-high, ~80u). Built to R&D-verified limits
 // (jump reach ~5u/comfy 4u, gaps onto strips <=5u, size-4 spike gauntlets, conveyor
-// +4, spring->finish). Identity preserved: an entry spike gauntlet, w2 PRECISION
-// BRIDGES, a belt-assisted gap, and a spring-to-finish.
+// +4, spring->finish). Identity preserved: a spike gauntlet, w2 PRECISION BRIDGES,
+// a belt-assisted gap, and a spring-to-finish.
 //
 // MULTI-ROUTE (Fall-Guys splits, see ../../../MULTI_ROUTE_DESIGN.md). Two branch
 // sections each fork into a SAFE lane (z=-3, far) and a RISKY/REWARD lane (z=+3,
 // near), splitting + rejoining at shared w6 hubs; the middle (z -2..+2) is left
 // EMPTY so you must commit to a side. Both lanes of every split reach the finish.
-//   - BRANCH 1 (x 26..36): the w2 precision bridge, now split. SAFE = clear w2 walk
+//   - BRANCH 1 (x 26..36): the w2 PRECISION BRIDGE, split. SAFE = clear w2 walk
 //     (1 coin); RISKY = a size-4 SPIKE GAUNTLET (2 coins). Rejoin = the saw hub.
 //   - BRANCH 2 (x 63..75): belt-assisted split off hub F. SAFE = clear longer w2
 //     walk (1 coin); RISKY = a LETHAL sawblade flank, then a 4u GAP (2 coins).
 //
-// The connecting SPINE (runway B + belt E) is w6 so a committed lane (z=±3) is
-// walkable straight through it; the entry spike gauntlet sits centered (cz0) so the
-// center line jumps it while a side line strafes past — the run's first choice.
-// Both lanes REJOIN at hub G, which carries one spring per lane (cz -3/0/+3) up the
-// d6 finish tower, so whichever side you committed to lands the win.
+// IMPORTANT (builder): a `strip` only gets a 2u-wide (or 4u for w4) physics collider
+// regardless of visual width, so SHARED spine that must be walkable across z-3..+3
+// uses `platform` (full w x d collider) or the w6 `conveyor` (full-width collider).
+// Branch LANES are w2 strips centered at z=±3 (collider covers their lane). Both
+// lanes REJOIN at hub G, which carries one spring PER LANE (cz -3/0/+3) up the d6
+// finish tower, so whichever side you committed to lands the win.
 //
 // Forward = +X. Lanes read at z=-3 (far) / z=+3 (near); camera is behind (+Z) above.
 export default {
@@ -24,10 +25,10 @@ export default {
   deckTop: 5,
   spawn: { x: 3, y: 6.2, z: 0 },
   decks: [
-    { kind: 'platform', cx: 3,  cz: 0, w: 6, d: 6, rails: true },   // A start hub          x: 0..6
-    { kind: 'strip', x0: 6, x1: 16, w: 6 },                         // B entry runway (w6)  x: 6..16  (spike gauntlet cx11, centered)
+    { kind: 'platform', cx: 4,  cz: 0, w: 6, d: 6, rails: true },   // A start hub          x: 1..7
+    { kind: 'platform', cx: 12, cz: 0, w: 6, d: 6, rails: true },   // B runway hub         x: 9..15  (gap 2; lead-in, commit to a side)
 
-    { kind: 'platform', cx: 21, cz: 0, w: 6, d: 6, rails: true },   // C SPLIT HUB 1        x:18..24  (gap 2 off B)
+    { kind: 'platform', cx: 21, cz: 0, w: 6, d: 6, rails: true },   // C SPLIT HUB 1        x:18..24  (gap 3)
 
     // ---- BRANCH 1 (x 26..36): the w2 PRECISION BRIDGE, split. 2u hop onto a lane. ----
     { kind: 'strip', x0: 26, x1: 36, z: -3, w: 2 },                 // B1 SAFE  (far)       x:26..36  (clear w2 walk)

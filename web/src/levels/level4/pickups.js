@@ -6,9 +6,8 @@
 //   Branch 1:  safe 1 coin  | risky 2 (incl. an arc over the spike gauntlet).
 //   Branch 2:  safe 1 coin  | risky 2 (incl. an arc over the 4u gap).
 export const coins = [
-  { x: 3,  y: 6.4, z: 0 },     // A start hub
-  { x: 8,  y: 6.2, z: 0 },     // B runway entry
-  { x: 11, y: 7.0, z: 0 },     // B: arc over the entry gauntlet
+  { x: 4,  y: 6.4, z: 0 },     // A start hub
+  { x: 12, y: 6.2, z: 0 },     // B runway hub
   { x: 21, y: 6.2, z: 0 },     // C split hub 1
 
   // Branch 1
