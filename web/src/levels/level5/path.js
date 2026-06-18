@@ -22,14 +22,19 @@
 // z=+3) lane is BOOSTED by FORWARD CONVEYORS `conveyor {cz:3, w:4}` (span z1..5 —
 // they NEVER touch the z=-3 SAFE lane). The belt pushes +X (CONVEYOR_SPEED 4 on top
 // of the 8 base) so the risky runner moves ~12 u/s vs SAFE's 8 — a real Fall-Guys
-// shortcut. Because L5 is long (~103u) the boost is GENEROUS: a belt on every clear
-// stretch of all THREE risky branches (run-ups + landings around each gauntlet/gap),
-// so the risky route finishes CLEARLY faster overall. The hazards are UNCHANGED —
-// belts sit BEFORE/AFTER each lethal gauntlet & on each jump's run-up, never over the
-// spike cells (you still jump every gauntlet/gap). The shared spine (hubs, M1/M3
-// belts, spring tower) is identical for both lanes, so the lead is pure SPEED on the
-// near lane. SAFE is also nudged slower (its lane decks step down to deckTop 4 then
-// climb back via the hubs) to widen the margin while staying flat & followable.
+// shortcut. Because L5 is long (~103u) the boost is GENEROUS — a forward belt on
+// EVERY clear grounded stretch the risky runner crosses:
+//   (a) the run-up + landing of all THREE branch gauntlets/gaps (B1, B2, B3), and
+//   (b) the NEAR HALF (cz3, w4 -> z1..5) of every shared hub (B, C, D, E) plus the
+//       gap-landing approach onto spring deck F — boosting the risky runner ACROSS
+//       the hubs at ~12u/s while the SAFE runner at z-3 walks them at 8 (the hub
+//       near-belts never reach z-3, so they boost the risky lane ONLY).
+// This stacks ~45u of +X boost onto the near lane, so the risky route finishes
+// CLEARLY faster overall (~85 autoplay steps / ~1.4s ahead of SAFE). The hazards are
+// UNCHANGED — belts sit BEFORE/AFTER each lethal gauntlet & on each jump's run-up,
+// NEVER over the spike cells (you still jump every gauntlet/saw-gap). The shared spine
+// (M1/M3 belts, spring tower) and the SAFE lane are otherwise untouched, so the lead
+// is pure SPEED on the near lane while both lanes stay flat, fixed-z & followable.
 //
 // FINALE IDENTITY PRESERVED: conveyor-fed spike gauntlets (M1 belt->B1, M3 belt->B3),
 // the w2 gap-bridge chain (branch 2 + branch 3 trailing gap), saws spinning in the
