@@ -17,4 +17,6 @@ trace[0-9]*.mjs
 !/deathburst.png
 !/level*.png
 !/route*.png
+!/character.png
+!/ragdoll.png
 /previews/*.png

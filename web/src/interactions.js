@@ -57,10 +57,15 @@ export function createInteractions({ physics, player, hud, world, events }) {
       // Death: respawn + flash. Takes precedence; skip the rest this frame so
       // we don't immediately re-launch/convey the just-respawned player.
       if (onDeath) {
-        const t = player.translation();
-        emit('death', { position: { x: t.x, y: t.y, z: t.z } });
-        player.respawn();
-        hud.flashDeath();
+        // Emit once (guard via player.alive), then hand off to the ragdoll death
+        // flow in game.js (player.die() hides+freezes; respawn happens after the
+        // puppet plays out). Falls back to respawn if die() isn't available.
+        if (player.alive !== false) {
+          const t = player.translation();
+          emit('death', { position: { x: t.x, y: t.y, z: t.z }, velocity: player.getVelocity ? player.getVelocity() : null });
+          if (player.die) player.die(); else player.respawn();
+          hud.flashDeath();
+        }
         wasOnSpring = false;
         player.setConveyor(null);
         return;

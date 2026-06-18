@@ -12,6 +12,7 @@ import { createAudio } from './audio.js';
 import { createParticles } from './effects/particles.js';
 import { createWorldAnim } from './effects/worldAnim.js';
 import { createCoinJuice } from './effects/coins.js';
+import { createRagdoll } from './effects/ragdoll.js';
 
 // Playable entry. Levels are data (src/levels/*); one builder makes visuals +
 // physics. Progression advances by reloading with ?level=N (fresh scene/world),
@@ -39,7 +40,26 @@ async function start() {
   const particles = createParticles(scene, events);
   const worldAnim = createWorldAnim(built.group);
   const coinJuice = createCoinJuice(world, events);
+  const ragdoll = createRagdoll(scene, physics);
   if (audio && audio.resume) audio.resume();
+
+  // Death -> ragdoll. interactions emits 'death' (and calls player.die()); we
+  // spawn the flailing puppet at the hit spot. Real gameplay (rAF loop) lets it
+  // play ~1.5s before respawning; the headless test step() resolves instantly.
+  let dying = false;
+  let dyingT = 0;
+  events.on('death', ({ position, velocity }) => {
+    if (dying) return;
+    dying = true;
+    dyingT = 1.5;
+    if (position) ragdoll.spawn(position, velocity || { x: 0, y: 0, z: 0 });
+  });
+  function resolveDeath(snapCam) {
+    ragdoll.clear();
+    player.respawn();
+    if (snapCam) followCam.snap();
+    dying = false;
+  }
 
   // Small level label (avoids touching hud.js).
   const label = document.createElement('div');
@@ -84,7 +104,7 @@ async function start() {
     levelIndex, levelCount: LEVELS.length, levelName: level.name, levelData: level,
     pause() { simRunning = false; },
     resume() { simRunning = true; },
-    step(n = 1) { for (let i = 0; i < n; i++) { simStep(); followCam.update(FIXED_DT); } },
+    step(n = 1) { for (let i = 0; i < n; i++) { simStep(); if (dying) resolveDeath(false); followCam.update(FIXED_DT); } },
     testWarp(x, y, z) {
       const s = player.spawn; const o = { x: s.x, y: s.y, z: s.z };
       s.x = x; s.y = y; s.z = z; player.respawn(); s.x = o.x; s.y = o.y; s.z = o.z;
@@ -98,11 +118,17 @@ async function start() {
   function frame(now) {
     const dt = Math.min((now - last) / 1000, 0.1);
     last = now;
-    if (simRunning) {
+    if (dying) {
+      // Camera frozen on the hit spot; step physics so the ragdoll flails, then respawn.
       acc += dt;
       let guard = 0;
-      while (acc >= FIXED_DT && guard++ < 5) { simStep(); acc -= FIXED_DT; }
-      followCam.update(dt);
+      while (acc >= FIXED_DT && guard++ < 5) { physics.stepOnce(); ragdoll.update(FIXED_DT); dyingT -= FIXED_DT; acc -= FIXED_DT; }
+      if (dyingT <= 0) resolveDeath(true);
+    } else if (simRunning) {
+      acc += dt;
+      let guard = 0;
+      while (acc >= FIXED_DT && guard++ < 5) { simStep(); acc -= FIXED_DT; if (dying) break; }
+      if (!dying) followCam.update(dt);
     }
     particles.update(dt);
     worldAnim.update(dt);
