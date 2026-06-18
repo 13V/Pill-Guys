@@ -2,6 +2,7 @@
 // Minimal scene: a single start-pad at deck top (y=5) with the pill guy spawned
 // just above it. Runs a fixed-step loop (fixedUpdate -> stepOnce -> syncVisual)
 // so we can screenshot seating and drive movement/jump from puppeteer.
+import * as THREE from 'three';
 import { createScene } from '../src/scene.js';
 import { initPhysics, FIXED_DT } from '../src/physics.js';
 import { createInput as createStubInput } from '../src/input.js'; // contract check (still a stub)
@@ -13,6 +14,17 @@ const physics = await initPhysics();
 // Start-pad: a solid box whose TOP surface is at y=5 (deck top), centered at x=3,z=0.
 physics.addStaticBoxFromTop(3, 5, 0, 3, 1, 3);
 
+// Matching visual mesh for the pad (preview only) so screenshots clearly show
+// the pill resting ON the deck. Box is 6x1x6, top at y=5 -> center y=4.5.
+const pad = new THREE.Mesh(
+  new THREE.BoxGeometry(6, 1, 6),
+  new THREE.MeshStandardMaterial({ color: 0x5b8dd6, roughness: 0.7, metalness: 0.05 })
+);
+pad.position.set(3, 4.5, 0);
+pad.castShadow = true;
+pad.receiveShadow = true;
+scene.add(pad);
+
 // The project input.js is still a stub (always returns 0), so for keyboard-driven
 // verification we attach a small REAL keyboard input here. We still import the
 // stub above to confirm createPlayer composes against the real module signature.
@@ -21,9 +33,10 @@ const input = createKeyboardInput();
 
 const player = createPlayer(scene, physics, input, { x: 3, y: 6.5, z: 0 });
 
-// Frame the start pad for a clear seating read.
-camera.position.set(10, 8.5, 11);
-const lookAt = { x: 3, y: 5.4, z: 0 };
+// Frame the start pad for a clear seating read (a bit higher/closer so the pad
+// surface reads against the ground, not just the backdrop).
+camera.position.set(9, 9.5, 10);
+const lookAt = { x: 3, y: 5.2, z: 0 };
 camera.lookAt(lookAt.x, lookAt.y, lookAt.z);
 if (controls) controls.target.set(lookAt.x, lookAt.y, lookAt.z);
 if (controls) controls.update();
@@ -42,14 +55,31 @@ window.__game = { player, physics, scene, camera, input };
 // reliable fallback to synthetic key events) drive held keys / jump directly.
 window.__input = input;
 
-function loop() {
-  player.fixedUpdate(FIXED_DT, 0);
-  physics.stepOnce();
-  player.syncVisual();
-  renderer.render(scene, camera);
-  requestAnimationFrame(loop);
+// Drive the fixed-step sim from a wall-clock accumulator (mirrors src/game.js)
+// rather than requestAnimationFrame — rAF is throttled hard in headless Chromium,
+// which would starve the physics step. A setInterval tick keeps real time moving.
+let last = performance.now();
+let acc = 0;
+function tick() {
+  const now = performance.now();
+  acc += Math.min((now - last) / 1000, 0.1);
+  last = now;
+  let guard = 0;
+  while (acc >= FIXED_DT && guard++ < 8) {
+    player.fixedUpdate(FIXED_DT, 0);
+    physics.stepOnce();
+    player.syncVisual();
+    acc -= FIXED_DT;
+  }
 }
-loop();
+setInterval(tick, 8);
+
+// Keep rendering on rAF (cheap, only affects what a screenshot shows).
+function draw() {
+  renderer.render(scene, camera);
+  requestAnimationFrame(draw);
+}
+draw();
 
 // --- Minimal real keyboard input (mirrors src/input.js contract) ------------
 function createKeyboardInput() {

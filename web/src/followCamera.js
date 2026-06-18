@@ -17,11 +17,11 @@ import * as THREE from 'three';
 // (36,24,31) looking at (15,4,0)). Sitting the camera behind in +X / +Z and
 // well above the pill reproduces that: the level reads left->right, the pill
 // lands a touch below frame center, and there's generous headroom above it.
-const DEFAULT_OFFSET = new THREE.Vector3(7, 8.5, 11);
+const DEFAULT_OFFSET = new THREE.Vector3(5, 6.5, 8);
 
 // The lookAt point is biased a little ABOVE the player's reported origin so the
 // pill sits just below screen center with headroom, rather than dead-center.
-const DEFAULT_LOOK_BIAS = new THREE.Vector3(0, 1.0, 0);
+const DEFAULT_LOOK_BIAS = new THREE.Vector3(0, 1.2, 0);
 
 // Exponential smoothing rates (per second). Higher = snappier / less lag.
 // Position is a touch looser than the lookAt so the frame glides while the
