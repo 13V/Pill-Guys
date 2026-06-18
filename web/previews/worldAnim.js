@@ -71,16 +71,19 @@ renderer.render(scene, camera);
 window.__ready = true;
 
 // Keep advancing + rendering after the flag too, so an interactive open shows
-// continuous motion (harmless for the headless single-shot).
-let last = performance.now();
-function loop(now) {
-  const dt = Math.min((now - last) / 1000, 0.05);
-  last = now;
-  anim.update(dt);
-  renderer.render(scene, camera);
+// continuous motion. Skipped when steps=0 so a rest-pose snapshot stays exactly
+// at the pre-advance state for before/after comparison.
+if (steps > 0) {
+  let last = performance.now();
+  const loop = (now) => {
+    const dt = Math.min((now - last) / 1000, 0.05);
+    last = now;
+    anim.update(dt);
+    renderer.render(scene, camera);
+    requestAnimationFrame(loop);
+  };
   requestAnimationFrame(loop);
 }
-requestAnimationFrame(loop);
 
 // Expose for console poking.
 window.__anim = anim;
