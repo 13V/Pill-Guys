@@ -1,15 +1,16 @@
 import * as THREE from 'three';
+import { buildCharacter, BEAN_RADIUS, BEAN_HALF_HEIGHT } from './character.js';
 
 // PLAYER — the "pill guy": a Fall-Guys-style character (bean torso + 2 legs +
 // 2 arms + face) on a kinematic capsule. Movement tuning is unchanged (snappy
 // arcade feel). New: a walk cycle (legs/arms swing with travel), and die()/alive
 // so a hit spawns the ragdoll puppet (see effects/ragdoll.js) before respawn.
-//   createPlayer(scene, physics, input, spawn, events) -> player
-//   emits 'jump' on jump, 'land' on landing.
+//   createPlayer(scene, physics, input, spawn, events, opts) -> player
+//   opts.skin = a cosmetics 'skin' item (recolours the bean). emits 'jump'/'land'.
 
 // --- Tuning (snappy toy-platformer feel; physics capsule unchanged) ---------
-const RADIUS = 0.35;
-const HALF_HEIGHT = 0.4;
+const RADIUS = BEAN_RADIUS;
+const HALF_HEIGHT = BEAN_HALF_HEIGHT;
 const SPEED = 8;
 const GRAVITY = -26;
 const JUMP_V = 12.5;       // apex ~3.0 units
@@ -20,13 +21,13 @@ const COYOTE_TIME = 0.1;
 const JUMP_BUFFER = 0.1;
 const LAND_AIR_MIN = 0.12;
 
-export function createPlayer(scene, physics, input, spawn, events) {
+export function createPlayer(scene, physics, input, spawn, events, opts = {}) {
   const emit = (type, payload) => { if (events && typeof events.emit === 'function') events.emit(type, payload); };
 
   const object3D = new THREE.Object3D();
   object3D.position.set(spawn.x, spawn.y, spawn.z);
   scene.add(object3D);
-  const limbs = buildCharacter(object3D);
+  const limbs = buildCharacter(object3D, opts.skin);
 
   const character = physics.createCharacter({ radius: RADIUS, halfHeight: HALF_HEIGHT, position: { x: spawn.x, y: spawn.y, z: spawn.z } });
 
@@ -245,67 +246,4 @@ function smoothAngle(from, to, t) {
   let delta = ((to - from + Math.PI) % (Math.PI * 2)) - Math.PI;
   if (delta < -Math.PI) delta += Math.PI * 2;
   return from + delta * t;
-}
-
-// Build the Fall-Guys-style character: a bean torso + a face + two pivoted legs
-// and two pivoted arms. Each limb is a Group hinged at the hip/shoulder (so it
-// swings) holding a stubby capsule with a rounded hand/foot on the end — the
-// rounded caps poke out past the bean so the 2-arms/2-legs body plan reads
-// clearly even from the high follow-cam. Returns the limb groups to animate.
-function buildCharacter(parent) {
-  const bodyMat = new THREE.MeshStandardMaterial({ color: 0xff4d4d, roughness: 0.35, metalness: 0.05 });
-  const limbMat = new THREE.MeshStandardMaterial({ color: 0xe23b3b, roughness: 0.45, metalness: 0.05 });
-  const capMat = new THREE.MeshStandardMaterial({ color: 0xfff0e6, roughness: 0.3, metalness: 0.05 }); // cream hands/feet
-
-  // Squash & stretch rig: a single Group holding ALL character meshes so we can
-  // scale/offset the whole character (juice) without disturbing object3D.position
-  // (physics tracks it, camera follows) or object3D.rotation.y (facing). The
-  // walk-cycle limb rotations still work since the limbs live under the rig.
-  const rig = new THREE.Group();
-  parent.add(rig);
-  const parent_ = rig; // everything below parents into the rig
-
-  // Torso (the bean).
-  const body = new THREE.Mesh(new THREE.CapsuleGeometry(RADIUS, 2 * HALF_HEIGHT, 8, 20), bodyMat);
-  body.castShadow = true; body.receiveShadow = true;
-  parent_.add(body);
-
-  // A limb hinged at (px,py): a Group at the hinge holding a capsule that hangs
-  // below it, capped with a rounded sphere (hand/foot). baseZ tilts it outward.
-  function limb(px, py, length, r, capR, baseZ) {
-    const g = new THREE.Group();
-    g.position.set(px, py, 0);
-    g.rotation.z = baseZ || 0;
-    const m = new THREE.Mesh(new THREE.CapsuleGeometry(r, length, 5, 10), limbMat);
-    m.position.y = -(length / 2 + r * 0.5);
-    m.castShadow = true;
-    g.add(m);
-    const cap = new THREE.Mesh(new THREE.SphereGeometry(capR, 12, 10), capMat);
-    cap.position.y = -(length + r * 0.5);
-    cap.castShadow = true;
-    g.add(cap);
-    parent_.add(g);
-    return g;
-  }
-  // Legs: spaced apart, hung from the lower bean so the cream feet peek out below.
-  const legL = limb(-0.18, -HALF_HEIGHT + 0.06, 0.22, 0.12, 0.15, 0);
-  const legR = limb(0.18, -HALF_HEIGHT + 0.06, 0.22, 0.12, 0.15, 0);
-  // Arms: at the shoulders, splayed slightly outward (base z-tilt) with hands.
-  const armL = limb(-(RADIUS + 0.02), HALF_HEIGHT * 0.2, 0.2, 0.1, 0.12, 0.32);
-  const armR = limb(RADIUS + 0.02, HALF_HEIGHT * 0.2, 0.2, 0.1, 0.12, -0.32);
-
-  // Eyes on the +Z (front) face.
-  const whiteMat = new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.25 });
-  const pupilMat = new THREE.MeshStandardMaterial({ color: 0x1a1a22, roughness: 0.4 });
-  const eyeY = HALF_HEIGHT * 0.6, eyeX = RADIUS * 0.42, eyeZ = RADIUS * 0.92;
-  const eyes = []; // eye-white meshes — Y-scaled to blink
-  for (const sx of [-1, 1]) {
-    const white = new THREE.Mesh(new THREE.SphereGeometry(RADIUS * 0.26, 16, 12), whiteMat);
-    white.position.set(sx * eyeX, eyeY, eyeZ); white.castShadow = true; parent_.add(white);
-    eyes.push(white);
-    const pupil = new THREE.Mesh(new THREE.SphereGeometry(RADIUS * 0.13, 12, 10), pupilMat);
-    pupil.position.set(sx * eyeX, eyeY, eyeZ + RADIUS * 0.16); parent_.add(pupil);
-  }
-
-  return { rig, body, legL, legR, armL, armR, eyes };
 }

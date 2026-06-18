@@ -14,6 +14,9 @@ import { createWorldAnim } from './effects/worldAnim.js';
 import { createCoinJuice } from './effects/coins.js';
 import { createRagdoll } from './effects/ragdoll.js';
 import { createTransition } from './effects/transition.js';
+import { createAura } from './effects/aura.js';
+import { createPet } from './pet.js';
+import { cosmetics } from './cosmetics.js';
 
 // Playable entry. Levels are data (src/levels/*); one builder makes visuals +
 // physics. Progression advances by reloading with ?level=N (fresh scene/world),
@@ -30,9 +33,17 @@ async function start() {
   const built = await buildLevel(level, { scene, physics }); // { group, spawn, coins, finishPos }
   const world = built;
 
+  // Equipped cosmetics (persisted in cosmetics.js / localStorage; defaults to the
+  // classic coral bean + no aura + no pet, so existing behaviour is unchanged).
+  const equipped = {
+    skin: cosmetics.getEquippedItem('skin'),
+    aura: cosmetics.getEquippedItem('aura'),
+    pet: cosmetics.getEquippedItem('pet'),
+  };
+
   const events = createEvents();
   const input = createInput();
-  const player = createPlayer(scene, physics, input, built.spawn, events);
+  const player = createPlayer(scene, physics, input, built.spawn, events, { skin: equipped.skin });
   const followCam = createFollowCamera(camera, player, { offset: { x: 0, y: 7.5, z: 11.5 }, lookBias: { x: 0, y: 1, z: 0 } });
   const hud = createHUD(built.coins ? built.coins.length : 0);
   const interactions = createInteractions({ physics, player, hud, world, events });
@@ -43,6 +54,11 @@ async function start() {
   const coinJuice = createCoinJuice(world, events);
   const ragdoll = createRagdoll(scene, physics);
   const transition = createTransition();
+  // Equipped aura rides on the player; equipped pet follows it.
+  const aura = createAura(player.object3D);
+  aura.setVariant(equipped.aura);
+  const pet = createPet(scene);
+  pet.setVariant(equipped.pet);
   if (audio && audio.resume) audio.resume();
 
   // Death -> ragdoll. interactions emits 'death' (and calls player.die()); we
@@ -78,14 +94,23 @@ async function start() {
   label.textContent = `Level ${levelIndex + 1}/${LEVELS.length} — ${level.name}`;
   document.body.appendChild(label);
 
+  // "Lobby" button — return to the customization hub.
+  const lobbyBtn = document.createElement('button');
+  lobbyBtn.textContent = '← Lobby';
+  lobbyBtn.style.cssText = 'position:fixed;top:10px;left:12px;z-index:1100;font:700 13px "Baloo 2",system-ui,sans-serif;color:#10243f;background:rgba(255,255,255,0.88);border:2px solid #2f7bff;border-radius:14px;padding:6px 13px;cursor:pointer;box-shadow:0 3px 0 rgba(27,80,200,0.35);';
+  lobbyBtn.addEventListener('click', () => { location.href = 'index.html'; });
+  document.body.appendChild(lobbyBtn);
+
   hud.onRestart(() => { player.respawn(); hud.reset(); followCam.snap(); });
 
-  // Progression: on finish, let the win banner + confetti play, then wipe to the
-  // next level with a fade (transition.fadeOut covers the screen before reload).
+  // Progression: on finish, bank the run's coins (+ a completion bonus) into the
+  // persistent wallet, let the win banner + confetti play, then wipe to the next
+  // level with a fade (transition.fadeOut covers the screen before reload).
   let advancing = false;
   events.on('finish', () => {
     if (advancing) return;
     advancing = true;
+    cosmetics.addCoins((hud.coins || 0) + 100);
     if (levelIndex + 1 < LEVELS.length) {
       setTimeout(() => {
         transition.fadeOut(550, () => { location.search = `?level=${levelIndex + 2}`; });
@@ -152,6 +177,8 @@ async function start() {
     particles.update(dt);
     worldAnim.update(dt);
     coinJuice.update(dt);
+    aura.update(dt);
+    pet.update(dt, player.translation(), followCam.yaw());
     renderer.render(scene, camera);
     requestAnimationFrame(frame);
   }

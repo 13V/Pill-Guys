@@ -3,17 +3,14 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>Pill-Guys — Assembly Line 01</title>
+    <title>Pill-Guys — Lobby</title>
     <style>
-      html, body { margin: 0; height: 100%; overflow: hidden; background: #e9edf2; }
-      #hud {
-        position: fixed; left: 12px; bottom: 10px; font: 12px/1.4 system-ui, sans-serif;
-        color: #5b6675; user-select: none; pointer-events: none;
-      }
+      html, body { margin: 0; height: 100%; overflow: hidden; background: #bfe0ff; }
     </style>
   </head>
   <body>
-    <div id="hud">Pill-Guys · Assembly Line 01 — drag to orbit, scroll to zoom</div>
-    <script type="module" src="/src/main.js"></script>
+    <!-- The customization lobby is the front door. lobbyUI.js builds the overlay;
+         lobby.js builds the 3D podium scene. PLAY -> game.html?level=1 -->
+    <script type="module" src="/src/lobby.js"></script>
   </body>
 </html>
