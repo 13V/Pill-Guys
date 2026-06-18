@@ -27,8 +27,8 @@ export default {
   spawn: { x: 3, y: 6.2, z: 0 },
   decks: [
     { kind: 'platform', cx: 3,  cz: 0, w: 6, d: 6, rails: true },          // A spawn hub        x: 0..6
-    { kind: 'platform', cx: 9,  cz: 0, w: 4, d: 4 },                       // B real jump-gap    x: 7..11  (gap 1)
-    { kind: 'platform', cx: 15, cz: 0, w: 4, d: 4 },                       // C real jump-gap    x:13..17  (gap 2)
+    { kind: 'platform', cx: 9,  cz: 0, w: 4, d: 6 },                       // B real jump-gap    x: 7..11  (gap 1; d6 so side lanes can cross)
+    { kind: 'platform', cx: 15, cz: 0, w: 4, d: 6 },                       // C real jump-gap    x:13..17  (gap 2; d6 so side lanes can cross)
 
     // --- BRANCH 1 (top 5): SAFE clear lane vs RISKY spike-gauntlet lane ---
     { kind: 'platform', cx: 21, cz: 0, w: 6, d: 6, rails: true },          // D B1 ENTRY hub      x:18..24  (gap 1; spikeblock weave)

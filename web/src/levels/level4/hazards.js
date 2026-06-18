@@ -4,11 +4,11 @@
 // (near, z=+3) lanes; the SAFE (far, z=-3) lanes are clear. Nothing lethal ever
 // sits on the only path — shared hubs carry only decorative (menace-only) saws.
 //
-// - B entry runway (w6): a clean lead-in that lets you commit to a side before the
-//   first split (no centered hazard, so every lane has a fair entry).
+// - Opening (hubs A->B->C): a clean lead-in that lets you commit to a side before
+//   the first split (no centered hazard, so every lane has a fair entry).
 // - BRANCH 1 RISKY lane (z+3): the level's signature SPIKE GAUNTLET, size-4 (cx31;
-//   spike box x29..33,
-//   solid w2 deck to land on at x26..29 and x33..36). SAFE lane (z-3) is clear.
+//   spike box x29..33, with solid w2 deck to land on at x26..29 and x33..36). The
+//   SAFE lane (z-3) is a clear w2 walk.
 // - D saw hub: one decorative sawblade (NO lethal flag => no death sensor) keeps
 //   the signature "saw hub" look without ever blocking the rejoin.
 // - BRANCH 2 RISKY lane (z+3): a LETHAL sawblade flanking the lane at cz+4.6 — its
