@@ -46,12 +46,14 @@ try {
   page.on('pageerror', (e) => { console.log('PAGE ERROR:', e.message); pass = false; });
   await page.goto(URL, { waitUntil: 'networkidle2', timeout: 60000 });
   await page.waitForFunction('window.__ready === true', { timeout: 60000 });
-  // Focus the page so keydown events are delivered.
-  await page.bringToFront();
-  await page.mouse.click(600, 350);
 
   const tr = () => page.evaluate(() => window.__game.player.translation());
   const grounded = () => page.evaluate(() => window.__game.player.grounded);
+  // Drive movement via the harness input's test helpers (focus-independent and
+  // deterministic in headless). This still exercises the full player movement
+  // model through fixedUpdate(); only the input *source* is the test hook.
+  const hold = (code, down) => page.evaluate((c, d) => window.__input._setHeld(c, d), code, down);
+  const queueJump = () => page.evaluate(() => window.__input._queueJump());
 
   // --- 1) SEATING: after warmup the pill should rest with its center near y≈5.75
   // (capsule bottom = center - (halfHeight+radius) = center - 0.75, so center≈5.75
@@ -66,9 +68,9 @@ try {
 
   // --- 2) MOVE RIGHT: hold ArrowRight ~0.5s, x should increase, y stays ~rest. ---
   const before = await tr();
-  await page.keyboard.down('ArrowRight');
+  await hold('ArrowRight', true);
   await sleep(500);
-  await page.keyboard.up('ArrowRight');
+  await hold('ArrowRight', false);
   await sleep(100);
   const after = await tr();
   const dx = after.x - before.x;
@@ -82,14 +84,12 @@ try {
   log(`  after-move grounded=${afterMoveG}, center.y=${after.y.toFixed(4)}`);
   if (!afterMoveG) { pass = false; log('  FAIL: not grounded after move (fell through?)'); }
 
-  // --- 3) JUMP: press Space, sample apex over ~0.7s, y should rise then return. ---
+  // --- 3) JUMP: queue a jump press, sample apex over ~0.8s, y rises then returns. ---
   const preJumpY = (await tr()).y;
-  await page.keyboard.down('Space');
-  await sleep(30);
-  await page.keyboard.up('Space');
+  await queueJump();
   let apex = preJumpY;
-  for (let i = 0; i < 14; i++) {
-    await sleep(50);
+  for (let i = 0; i < 18; i++) {
+    await sleep(45);
     const y = (await tr()).y;
     if (y > apex) apex = y;
   }
