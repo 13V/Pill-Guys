@@ -1,11 +1,11 @@
 // Particles preview: build the studio scene, drop a small platform for context,
 // then fire a DEATH burst and a COIN sparkle and advance a fixed number of frames
-// so both bursts are caught mid-flight for the screenshot.
+// so both bursts are mid-flight, set __ready, and keep a live update+render loop.
 //
-// Determinism note: we advance the sim a FIXED number of update() steps and then
-// freeze (the post-ready loop only re-renders; it does not advance or re-emit).
-// That keeps the still reproducible — the headless screenshot always shows the
-// same mid-flight moment regardless of when it's captured.
+// The live loop re-fires both bursts on a short cadence (shorter than a burst's
+// lifetime) so there are ALWAYS bits in flight — that way the headless screenshot,
+// which is captured ~1.2s after __ready, reliably catches a lively mid-burst frame
+// instead of an empty one.
 import * as THREE from 'three';
 import { createScene } from '../src/scene.js';
 import { createEvents } from '../src/events.js';
@@ -36,29 +36,32 @@ const fx = createParticles(scene, events);
 window.__fx = fx;
 window.__scene = scene;
 
+function fire() {
+  events.emit('death', { position: { x: 0, y: 1.6, z: 0 } });
+  events.emit('coin', { position: { x: 3.4, y: 1.6, z: 0 } });
+}
+
 // Fire both bursts and step the sim so they're mid-flight for the still.
-events.emit('death', { position: { x: 0, y: 1.6, z: 0 } });
-events.emit('coin', { position: { x: 3.4, y: 1.6, z: 0 } });
+fire();
 for (let i = 0; i < 10; i++) fx.update(1 / 60);
 
 render();
 render();
 window.__ready = true;
 
-// Live, interactive loop: re-fire periodically so the page keeps showing bursts
-// when viewed in a real browser. (The headless still is already captured from the
-// frozen 10-step state above; this loop is for human viewing only.)
+// Live loop: advance with a sane per-frame dt and re-fire often enough that there
+// are ALWAYS bits in flight, so the headless screenshot (taken ~1.2s after __ready)
+// can't land on an empty frame. We derive dt from the rAF timestamp itself (not
+// performance.now(), whose time origin can differ from rAF's in headless Chromium),
+// and clamp it to a safe positive range.
 let acc = 0;
-let last = performance.now();
+let last = -1;
 function loop(now) {
-  const dt = Math.min((now - last) / 1000, 0.05);
+  let dt = last < 0 ? 1 / 60 : (now - last) / 1000;
   last = now;
+  if (!(dt > 0) || dt > 0.05) dt = Math.min(Math.max(dt, 1 / 120), 0.05);
   acc += dt;
-  if (acc >= 0.9) {
-    acc = 0;
-    events.emit('death', { position: { x: 0, y: 1.6, z: 0 } });
-    events.emit('coin', { position: { x: 3.4, y: 1.6, z: 0 } });
-  }
+  if (acc >= 0.3) { acc = 0; fire(); } // death lasts ~0.6s; 0.3s cadence overlaps
   fx.update(dt);
   render();
   requestAnimationFrame(loop);

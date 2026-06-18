@@ -7,4 +7,5 @@ dist/
 /*.png
 !/preview.png
 !/gameplay.png
+!/deathburst.png
 /previews/*.png

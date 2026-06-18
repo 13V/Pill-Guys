@@ -7,8 +7,8 @@
 //   On 'coin' {position}: a quick small sparkle pop (~8 bright-yellow bits, ~0.35s).
 //
 // Implementation: ONE pooled THREE.Points backed by a single BufferGeometry with
-// per-point position / color / size / alpha attributes, drawn with a tiny additive
-// ShaderMaterial (soft round sprite, no depth-write, no shadows). A CPU-side pool of
+// per-point position / color / size / alpha attributes, drawn with a tiny
+// ShaderMaterial (soft round sprite, alpha-blended, no depth-write, no shadows). A CPU-side pool of
 // particle records holds velocity + lifetime; update(dt) integrates motion, applies
 // gravity, fades/shrinks, culls dead bits, and repacks the live ones into the buffers.
 // Total live particles are hard-capped so the effect always stays cheap.
@@ -17,19 +17,21 @@ import * as THREE from 'three';
 const MAX_PARTICLES = 200; // hard cap on simultaneously-live bits
 const GRAVITY = 9.0; // downward accel (units/s^2) applied to every bit
 
-// Cheerful death palette: punchy reds + a few crisp whites.
+// Cheerful death palette: punchy saturated reds + crisp whites. The reds are kept
+// vivid so they pop against either the light studio sky or darker level geometry;
+// the whites read as bright sparks over the dark pieces and as soft glints on sky.
 const DEATH_COLORS = [
-  new THREE.Color('#ff3b30'), // bright red
-  new THREE.Color('#ff5a4d'), // warm coral red
-  new THREE.Color('#ff2d55'), // pink-red
+  new THREE.Color('#ff2a1f'), // vivid red
+  new THREE.Color('#ff4a3a'), // warm coral red
+  new THREE.Color('#ff1e48'), // pink-red
   new THREE.Color('#ffffff'), // white
-  new THREE.Color('#fff0f0'), // near-white blush
+  new THREE.Color('#ffd9d9'), // warm white-pink
 ];
-// Coin sparkle palette: bright, slightly varied yellows.
+// Coin sparkle palette: bright, saturated golds/yellows that stay legible on light.
 const COIN_COLORS = [
-  new THREE.Color('#ffe14d'), // bright yellow
-  new THREE.Color('#ffd11a'), // gold
-  new THREE.Color('#fff7b0'), // pale highlight
+  new THREE.Color('#ffcf1a'), // bright gold-yellow
+  new THREE.Color('#ffb300'), // amber gold
+  new THREE.Color('#fff27a'), // pale highlight
 ];
 
 export function createParticles(scene, events) {
@@ -57,9 +59,9 @@ export function createParticles(scene, events) {
   // Soft round glow sprite so each point reads as a little ball of light, not a square.
   const sprite = makeSpriteTexture();
 
-  // Additive ShaderMaterial: size attenuates with distance; per-point color + alpha;
-  // soft circular falloff from the sprite. Additive + no depth-write keeps the burst
-  // glowy and order-independent over the scene.
+  // ShaderMaterial: size attenuates with distance; per-point color + alpha; soft
+  // circular falloff from the sprite. Alpha-blended + no depth-write keeps the burst
+  // soft and order-independent over the scene without writing to the depth buffer.
   const material = new THREE.ShaderMaterial({
     uniforms: {
       uTexture: { value: sprite },
@@ -94,7 +96,11 @@ export function createParticles(scene, events) {
     transparent: true,
     depthWrite: false,
     depthTest: true,
-    blending: THREE.AdditiveBlending,
+    // Normal (alpha) blending rather than additive: additive bits vanish against
+    // the scene's near-white studio backdrop (white + color clamps to white),
+    // whereas alpha-blended saturated bits stay crisp and on-palette over both the
+    // light sky and darker level geometry.
+    blending: THREE.NormalBlending,
   });
 
   const points = new THREE.Points(geometry, material);
@@ -168,7 +174,7 @@ export function createParticles(scene, events) {
       const vy = dy * speed + 2.6; // upward bias so the burst lifts first
       const vz = dz * speed;
       const color = DEATH_COLORS[(Math.random() * DEATH_COLORS.length) | 0];
-      const size = 0.16 + Math.random() * 0.16; // small bits
+      const size = 0.22 + Math.random() * 0.2; // small bits (~0.22..0.42)
       const life = 0.5 + Math.random() * 0.2; // ~0.5..0.7s, centered on 0.6
       // Spawn slightly jittered around the death point so the origin isn't a dot.
       spawn(
@@ -198,7 +204,7 @@ export function createParticles(scene, events) {
       const vy = dy * speed + 1.2; // gentle upward bias
       const vz = dz * speed;
       const color = COIN_COLORS[(Math.random() * COIN_COLORS.length) | 0];
-      const size = 0.13 + Math.random() * 0.1; // small, twinkly
+      const size = 0.18 + Math.random() * 0.12; // small, twinkly (~0.18..0.30)
       const life = 0.28 + Math.random() * 0.14; // ~0.28..0.42s, centered ~0.35
       spawn(
         pos.x + (Math.random() - 0.5) * 0.12,
@@ -218,8 +224,10 @@ export function createParticles(scene, events) {
       geometry.setDrawRange(0, 0);
       return;
     }
-    // Clamp dt so a long pause / tab-switch can't fling bits across the level.
-    const step = Math.min(dt, 0.05);
+    // Clamp dt into [0, 0.05]: caps a long pause / tab-switch so bits can't be
+    // flung across the level, and guards against a negative/NaN dt (which would
+    // integrate motion backward and keep particles from ever expiring).
+    const step = dt > 0 ? (dt < 0.05 ? dt : 0.05) : 0;
 
     let i = 0;
     let write = 0;
@@ -298,7 +306,7 @@ function copyParticle(src, dst) {
 }
 
 // Soft round glow sprite: bright opaque core fading to transparent at the rim, so
-// additive points read as little balls of light instead of hard squares.
+// points read as little soft balls of light instead of hard squares.
 function makeSpriteTexture() {
   const size = 64;
   const c = document.createElement('canvas');

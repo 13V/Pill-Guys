@@ -57,13 +57,22 @@ try {
   ok('stays on deck while running', moved.y > 4.5, `y=${moved.y.toFixed(2)}`);
   ok('collects coins while passing over them', (await coins()) > 0, `coins=${await coins()}`);
 
-  // 2) jump
+  // 2) jump — HOLD Space through the rise for a full jump (variable-jump cuts
+  // the height if you release early, so a held jump must clear ~2+ units).
   await warp(3, 6.2, 0); await settle(15);
   const restY = (await pos()).y;
-  await page.keyboard.down('Space'); await wait(40); await step(1); await page.keyboard.up('Space');
+  await page.keyboard.down('Space'); await wait(40);
   let maxY = restY;
-  for (let i = 0; i < 30; i++) { await step(1); maxY = Math.max(maxY, (await pos()).y); }
-  ok('jump raises the pill', maxY > restY + 1.0, `restY=${restY.toFixed(2)} apexY=${maxY.toFixed(2)}`);
+  for (let i = 0; i < 34; i++) { await step(1); maxY = Math.max(maxY, (await pos()).y); }
+  await page.keyboard.up('Space');
+  ok('full jump (held) clears ~2+ units', maxY > restY + 1.8, `restY=${restY.toFixed(2)} apexY=${maxY.toFixed(2)}`);
+
+  // 2b) variable jump: a quick tap rises clearly less than a held jump
+  await warp(3, 6.2, 0); await settle(15);
+  await page.keyboard.down('Space'); await step(1); await page.keyboard.up('Space');
+  let tapY = (await pos()).y;
+  for (let i = 0; i < 34; i++) { await step(1); tapY = Math.max(tapY, (await pos()).y); }
+  ok('variable jump: tap < full', tapY < maxY - 0.5, `tapApex=${tapY.toFixed(2)} fullApex=${maxY.toFixed(2)}`);
 
   // 3) conveyor pushes with NO input
   await warp(10, 6.2, 0); await settle(8);
@@ -88,6 +97,15 @@ try {
   await page.evaluate(() => window.__game.followCam.snap());
   await page.screenshot({ path: 'gameplay.png' });
   console.log('saved gameplay.png');
+
+  // 6b) death-burst effect shot (emit the event; particles animate via rAF)
+  await page.evaluate(() => {
+    const p = window.__game.player.translation();
+    window.__game.events.emit('death', { position: { x: p.x, y: p.y + 0.3, z: p.z } });
+  });
+  await wait(220);
+  await page.screenshot({ path: 'deathburst.png' });
+  console.log('saved deathburst.png');
 
   // 7) finish triggers win banner
   await warp(27.5, 11.0, 0); await step(4);
