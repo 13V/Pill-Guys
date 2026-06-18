@@ -15,32 +15,32 @@
 // spikeblocks) + the finish tower hold the rest.
 export const coins = [
   { x: 4,  y: 6.4, z: 0 },     // A start hub
-  { x: 14, y: 6.2, z: 0 },     // C split hub 1
+  { x: 11, y: 6.2, z: 0 },     // C split hub 1
 
   // Branch 1 — SAFE 1 / RISKY 3
-  { x: 33, y: 6.2, z: -3 },    // SAFE lane (clear w2 walk)               — 1 normal coin
-  { x: 17.5, y: 6.4, z: 3 },   // RISKY run-up (before the gauntlet)      — reward
-  { x: 21, y: 7.1, z: 3 },     // RISKY arc over the spike gauntlet       — reward (visible from hub)
-  { x: 38, y: 6.4, z: 3 },     // RISKY boost belt (ride it into hub D)   — reward
+  { x: 32, y: 6.2, z: -3 },    // SAFE lane (clear w2 walk)               — 1 normal coin
+  { x: 14.5, y: 6.4, z: 3 },   // RISKY run-up (before the gauntlet)      — reward
+  { x: 18, y: 7.1, z: 3 },     // RISKY arc over the spike gauntlet       — reward (visible from hub)
+  { x: 37, y: 6.4, z: 3 },     // RISKY boost belt (ride it into hub D)   — reward
 
-  { x: 52, y: 6.4, z: -2.6 },  // D saw hub / rejoin 1 (off-center, clear of the center spikeblock)
-  { x: 56, y: 6.4, z: 0 },     // E conveyor
+  { x: 53, y: 6.4, z: -2.6 },  // D saw hub / rejoin 1 (off-center, clear of the center spikeblock)
+  { x: 57, y: 6.4, z: 0 },     // E conveyor
 
   // Branch 2 — SAFE 1 / RISKY 3
-  { x: 66, y: 6.2, z: -3 },    // SAFE lane (clear w2 walk)               — 1 normal coin
-  { x: 64,   y: 6.4, z: 3 },   // RISKY run-up belt                       — reward
-  { x: 68,   y: 7.3, z: 3 },   // RISKY arc over the lethal-saw pit       — reward (visible from hub)
-  { x: 70.5, y: 6.4, z: 3 },   // RISKY pit landing on hub G              — reward
+  { x: 67, y: 6.2, z: -3 },    // SAFE lane (clear w2 walk)               — 1 normal coin
+  { x: 65,   y: 6.4, z: 3 },   // RISKY run-up belt                       — reward
+  { x: 69,   y: 7.3, z: 3 },   // RISKY arc over the lethal-saw pit       — reward (visible from hub)
+  { x: 71.5, y: 6.4, z: 3 },   // RISKY pit landing on hub G              — reward
 
-  { x: 73, y: 6.4, z: -2.6 },  // G rejoin hub 2 (off-center, clear of the center spikeblock)
-  { x: 79, y: 11.4, z: 0 },    // atop the finish tower
+  { x: 74, y: 6.4, z: -2.6 },  // G rejoin hub 2 (off-center, clear of the center spikeblock)
+  { x: 80, y: 11.4, z: 0 },    // atop the finish tower
 ];
 
 export const decor = [
   { kind: 'arrow', cx: 5, cz: 0 },          // go right, into the run
-  { kind: 'arrow', cx: 15.5, cz: -3 },      // signpost the SAFE lane of branch 1
-  { kind: 'gantry', cx: 21 },               // grey truss landmark over branch 1's gauntlet
-  { kind: 'pipeArch', cx: 52 },             // red arch framing the saw hub
-  { kind: 'portal', cx: 52, cz: 0 },        // green portal at the saw hub
-  { kind: 'arrow', cx: 61.5, cz: -3 },      // signpost the SAFE lane of branch 2
+  { kind: 'arrow', cx: 10.5, cz: -3 },      // signpost the SAFE lane of branch 1
+  { kind: 'gantry', cx: 18 },               // grey truss landmark over branch 1's gauntlet
+  { kind: 'pipeArch', cx: 53 },             // red arch framing the saw hub
+  { kind: 'portal', cx: 53, cz: 0 },        // green portal at the saw hub
+  { kind: 'arrow', cx: 62.5, cz: -3 },      // signpost the SAFE lane of branch 2
 ];
