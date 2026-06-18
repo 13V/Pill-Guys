@@ -9,7 +9,8 @@
 //   - The BRANCH 2 pit saw is now DECORATIVE (no `lethal` flag => no death sensor): it is
 //     a "decorative pit under a real gap" (per the audit) — the 4u jump is the challenge,
 //     not a death box that a careful jumper never touches anyway.
-//   - KEPT: the BRANCH 1 size-4 spike gauntlet as the single, on-the-line lethal hazard.
+//   - KEPT: the BRANCH 1 spike gauntlet (now size-2) as the single, on-the-line lethal
+//     hazard — a real jump-over, but gentler than L4's size-4 so L3 stays easier than L4.
 //
 // Identity kept: lethal-looking saws for menace, a real spike gauntlet, two springs.
 //
