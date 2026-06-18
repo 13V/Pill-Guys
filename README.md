@@ -28,13 +28,15 @@ so adding or rearranging sections is straightforward.
 
 ## Screenshots
 
-![The full course](docs/screenshots/hero.png)
+![The station diorama](docs/screenshots/hero.png)
 
-| Pendulum bridge | Spike-roller corridor | The crowned finish |
+| Down the deck | Saws & gears | The finish |
 | --- | --- | --- |
-| ![Pendulums](docs/screenshots/pendulums.png) | ![Spike rollers](docs/screenshots/spike-rollers.png) | ![Finish](docs/screenshots/finish.png) |
+| ![Deck](docs/screenshots/pendulums.png) | ![Saws](docs/screenshots/spike-rollers.png) | ![Finish](docs/screenshots/finish.png) |
 
-_Rendered with the bundled KayKit Platformer Pack (EXTRA) models, with primitive fallbacks where a model is missing._
+_A dense, KayKit-promo-style station diorama — a tiled deck on legs packed with
+platforms, pipes, rails, hazards and props — rendered with the bundled KayKit
+Platformer Pack (EXTRA) models (CC0)._
 
 ## Tech
 

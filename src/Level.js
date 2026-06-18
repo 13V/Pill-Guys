@@ -5,7 +5,6 @@ import {
   SpinningBeam,
   SpikeRoller,
   Conveyor,
-  MovingPlatform,
   Pendulum,
   Gear,
   TubeArch,
@@ -15,18 +14,19 @@ import {
 const COLORS = {
   platform: 0x2fb6ff,
   platformAlt: 0x49c7ff,
-  start: 0x7b5cff,
   finish: 0x32d96a,
   trim: 0xeef6ff,
   pillar: 0x6b7785,
-  flag: 0x32d96a,
 };
 
 const PLAYER_LIFT = CONFIG.player.halfHeight + CONFIG.player.radius + 0.3;
 const SLIME_Y = -8;
 
-// A winding obstacle course inspired by the KayKit Platformer Pack promo
-// layouts: an elevated track on pillars that snakes through hazards.
+// Deck bounds: a solid tiled "table" the whole diorama sits on.
+const DECK = { x0: -6, x1: 6, z0: 0, z1: 48, top: 0 };
+
+// A dense KayKit-promo-style station: a tiled deck on legs, packed edge to edge
+// with platforms, ramps, pipes, blocks, rails, hazards and scattered props.
 export class Level {
   constructor(scene, physics, assets) {
     this.scene = scene;
@@ -41,51 +41,55 @@ export class Level {
 
     this._build();
 
-    this.startRespawn = new THREE.Vector3(0, 0 + PLAYER_LIFT, 0);
+    this.startRespawn = new THREE.Vector3(0, DECK.top + PLAYER_LIFT, 4);
     this.currentCheckpoint = this.startRespawn.clone();
   }
 
-  // ---- building blocks -----------------------------------------------------
-
   _mat(color) {
-    return new THREE.MeshStandardMaterial({ color, roughness: 0.65, metalness: 0.05 });
+    return new THREE.MeshStandardMaterial({ color, roughness: 0.7, metalness: 0.0 });
   }
 
-  _platform({ x = 0, z, w, d, top = 0, color, pillars = true, collider = true }) {
-    const cy = top - 0.5;
-    const c = new THREE.Vector3(x, cy, z);
-    const modelColor = (color === COLORS.finish) ? 'green' : 'blue';
-    const m = this.assets.get(modelColor, 'platform_6x6x1');
+  // A KayKit model placed as pure decoration (no collider).
+  _prop(color, name, { x, y = DECK.top, z, uniform, size, rotY = 0, fallback }) {
+    const m = this.assets.get(color, name);
+    if (!m) {
+      if (fallback) this.scene.add(fallback());
+      return null;
+    }
+    if (size) fitBox(m, { x: 0, y: 0, z: 0 }, size);
+    else if (uniform) fitUniform(m, uniform);
+    m.rotation.y = rotY;
+    placeBase(m, x, y, z);
+    this.scene.add(m);
+    return m;
+  }
+
+  // A raised, walkable block (collider + KayKit platform model on top).
+  _block({ x, z, w, h, d, top, color = 'blue' }) {
+    const cy = top - h / 2;
+    const center = new THREE.Vector3(x, cy, z);
+    this.physics.addStaticBox(center, new THREE.Vector3(w, h, d));
+    const model = h >= 1.5 ? 'platform_4x4x2' : 'platform_4x4x1';
+    const m = this.assets.get(color, model);
     if (m) {
-      fitBox(m, { x, y: top - 0.5, z }, { x: w, y: 1, z: d });
+      fitBox(m, center, { x: w, y: h, z: d });
       this.scene.add(m);
     } else {
-      const mesh = new THREE.Mesh(new THREE.BoxGeometry(w, 1, d), this._mat(color ?? COLORS.platform));
-      mesh.position.copy(c);
+      const mesh = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), this._mat(COLORS.platformAlt));
+      mesh.position.copy(center);
       mesh.castShadow = true;
       mesh.receiveShadow = true;
       this.scene.add(mesh);
     }
-    if (collider) this.physics.addStaticBox(c, new THREE.Vector3(w, 1, d));
-
-    if (pillars) {
-      const ox = Math.min(w / 2 - 0.8, 3);
-      const oz = Math.min(d / 2 - 0.8, 3);
-      this._pillar(x - ox, z - oz, top);
-      this._pillar(x + ox, z + oz, top);
-    }
   }
 
-  _pillar(x, z, topY) {
-    const height = topY - 0.5 - SLIME_Y;
-    if (height <= 0) return;
-    const pillar = new THREE.Mesh(
-      new THREE.BoxGeometry(0.7, height, 0.7),
-      this._mat(COLORS.pillar),
-    );
-    pillar.position.set(x, SLIME_Y + height / 2, z);
-    pillar.receiveShadow = true;
-    this.scene.add(pillar);
+  _leg(x, z) {
+    const height = DECK.top - 1 - SLIME_Y;
+    const leg = new THREE.Mesh(new THREE.BoxGeometry(1.4, height, 1.4), this._mat(COLORS.pillar));
+    leg.position.set(x, SLIME_Y + height / 2, z);
+    leg.castShadow = true;
+    leg.receiveShadow = true;
+    this.scene.add(leg);
   }
 
   _ramp({ x = 0, z, w, fromTop, toTop, length }) {
@@ -93,15 +97,11 @@ export class Level {
     const angle = Math.atan2(rise, length);
     const span = Math.hypot(length, rise);
     const center = new THREE.Vector3(x, (fromTop + toTop) / 2 - 0.25, z);
-    const size = new THREE.Vector3(w, 0.5, span);
-
-    const euler = new THREE.Euler(-angle, 0, 0);
-    const quat = new THREE.Quaternion().setFromEuler(euler);
-    this.physics.addStaticBoxRotated(center, size, {
+    const quat = new THREE.Quaternion().setFromEuler(new THREE.Euler(-angle, 0, 0));
+    this.physics.addStaticBoxRotated(center, new THREE.Vector3(w, 0.5, span), {
       x: quat.x, y: quat.y, z: quat.z, w: quat.w,
     });
-
-    const m = this.assets.get('blue', 'platform_4x2x1');
+    const m = this.assets.get('blue', 'platform_slope_2x4x4') || this.assets.get('blue', 'platform_4x2x1');
     if (m) {
       const s = getSize(m);
       m.scale.set(w / s.x, 0.5 / s.y, span / s.z);
@@ -114,8 +114,6 @@ export class Level {
       const mesh = new THREE.Mesh(new THREE.BoxGeometry(w, 0.5, span), this._mat(COLORS.platformAlt));
       mesh.position.copy(center);
       mesh.quaternion.copy(quat);
-      mesh.castShadow = true;
-      mesh.receiveShadow = true;
       this.scene.add(mesh);
     }
   }
@@ -134,117 +132,131 @@ export class Level {
     this.checkpoints.push({
       index,
       center: new THREE.Vector3(x, top + 1.5, z),
-      half: new THREE.Vector3(6, 3.5, 4),
+      half: new THREE.Vector3(6, 3.5, 3),
       respawn: new THREE.Vector3(x, top + PLAYER_LIFT, z),
     });
-    // flag
-    const flag = this.assets.get('green', 'flag_C');
-    if (flag) {
-      fitUniform(flag, 3, 'y');
-      placeBase(flag, x + 3.2, top, z);
-      this.scene.add(flag);
-    } else {
-      const pole = new THREE.Mesh(new THREE.BoxGeometry(0.18, 3, 0.18), this._mat(COLORS.trim));
-      pole.position.set(x + 3.2, top + 1.5, z);
-      this.scene.add(pole);
-      const flagMesh = new THREE.Mesh(new THREE.BoxGeometry(1.3, 0.85, 0.08), this._mat(COLORS.flag));
-      flagMesh.position.set(x + 3.85, top + 2.6, z);
-      this.scene.add(flagMesh);
-    }
+    this._prop('green', 'flag_C', { x, y: top, z, uniform: 3 });
   }
 
-  // ---- the course ----------------------------------------------------------
+  // ---- the diorama ---------------------------------------------------------
 
   _build() {
     const P = this.physics;
     const S = this.scene;
 
-    // 1) Start pad  (spans z -4.5 .. 4.5)
-    this._platform({ x: 0, z: 0, w: 10, d: 9, top: 0, color: COLORS.start });
-    this._add(new Gate(S, P, this.assets, { x: 0, y: 0, z: -3.6, width: 7, height: 4.5 }));
+    // Solid deck collider (one box) + tiled top.
+    const dw = DECK.x1 - DECK.x0;
+    const dd = DECK.z1 - DECK.z0;
+    const dcx = (DECK.x0 + DECK.x1) / 2;
+    const dcz = (DECK.z0 + DECK.z1) / 2;
+    P.addStaticBox(new THREE.Vector3(dcx, DECK.top - 0.5, dcz), new THREE.Vector3(dw, 1, dd));
+    for (let tz = DECK.z0 + 3; tz < DECK.z1; tz += 6) {
+      for (const tx of [DECK.x0 + 3, DECK.x1 - 3]) {
+        const tile = this.assets.get('blue', 'platform_6x6x1');
+        if (tile) {
+          fitBox(tile, { x: tx, y: DECK.top - 0.5, z: tz }, { x: 6, y: 1, z: 6 });
+          S.add(tile);
+        } else {
+          const mesh = new THREE.Mesh(new THREE.BoxGeometry(6, 1, 6), this._mat(COLORS.platform));
+          mesh.position.set(tx, DECK.top - 0.5, tz);
+          mesh.receiveShadow = true;
+          S.add(mesh);
+        }
+      }
+    }
 
-    // 2) Stepping stones — alternating L/R, each a real ~3 m hop (gentle on-ramp)
-    this._platform({ x: -2.5, z: 9.5, w: 4, d: 4 }); // gap from start ~3.0
-    this._platform({ x: 2.5, z: 15.5, w: 4, d: 4 }); // ~3 m diagonal
-    this._platform({ x: -2.0, z: 21.5, w: 4, d: 4 }); // ~3 m diagonal
+    // Legs under the deck.
+    for (const lz of [5, 24, 43]) {
+      this._leg(DECK.x0 + 1.5, lz);
+      this._leg(DECK.x1 - 1.5, lz);
+    }
 
-    // 3) Spinning-beam arena (z 25..33). First beam is the gentlest hazard.
-    this._platform({ x: 0, z: 29, w: 11, d: 8 });
-    this._add(new SpinningBeam(S, P, this.assets, { x: 0, y: 0, z: 27, length: 4.6, height: 0.9, speed: 1.4 }));
-    this._add(new SpinningBeam(S, P, this.assets, { x: 0, y: 0, z: 31.5, length: 5, height: 1.4, speed: -1.4, phase: Math.PI / 2 }));
-    this._add(new TubeArch(S, P, this.assets, { x: 0, y: 0.2, z: 29, radius: 4, color: 0xff5a4d }));
-    this._checkpoint(0, 29, 0);
+    // Edge railings down both sides (framed-station look).
+    for (let rz = DECK.z0 + 2; rz < DECK.z1; rz += 2) {
+      this._prop('blue', 'railing_straight_double', { x: DECK.x0 + 0.5, y: DECK.top, z: rz, rotY: 0 });
+      this._prop('blue', 'railing_straight_double', { x: DECK.x1 - 0.5, y: DECK.top, z: rz, rotY: Math.PI });
+    }
 
-    // 4) Conveyor pushing back (belt collider is the floor; deco base sits lower).
-    //    Arena ends z33; belt spans z33..43.
-    this._platform({ x: 0, z: 38, w: 6, d: 10, top: -0.08, color: COLORS.platformAlt, collider: false });
-    this._add(new Conveyor(S, P, this.assets, { x: 0, y: 0, z: 38, w: 5.6, d: 9.6, dir: 'z', speed: -3.5 }));
+    // Start gate + signage.
+    this._add(new Gate(S, P, this.assets, { x: 0, y: DECK.top, z: 1, width: 9, height: 5 }));
+    this._prop('blue', 'signage_arrow_stand', { x: -3.5, y: DECK.top, z: 4, uniform: 2 });
 
-    // 5) Moving platforms — shuttle along Z so the FORWARD gap opens/closes.
-    this._platform({ x: 0, z: 46, w: 6, d: 5 }); // approach pad (z 43.5..48.5)
-    this._add(new MovingPlatform(S, P, this.assets, { x: 0, y: 0, z: 52, w: 4.5, d: 4.5, axis: 'z', amplitude: 1.6, speed: 1.1 }));
-    this._add(new MovingPlatform(S, P, this.assets, { x: 0, y: 0, z: 58.5, w: 4.5, d: 4.5, axis: 'z', amplitude: 1.6, speed: 1.1, phase: Math.PI }));
-    this._platform({ x: 0, z: 64.5, w: 8, d: 6 }); // landing (z 61.5..67.5)
-    this._checkpoint(0, 64.5, 0);
+    // --- Section 1: warm-up blocks + first sweeper ---
+    this._block({ x: -3.5, z: 8, w: 2, h: 1, d: 2 });
+    this._block({ x: 3.5, z: 10, w: 2, h: 1, d: 2 });
+    this._prop('yellow', 'barrier_1x1x1', { x: -3.5, y: DECK.top + 1, z: 8, uniform: 1.6 });
+    this._prop('yellow', 'barrier_1x1x1', { x: 3.5, y: DECK.top + 1, z: 10, uniform: 1.6 });
+    this._add(new SpinningBeam(S, P, this.assets, { x: 0, y: DECK.top, z: 13, length: 5, height: 0.9, speed: 1.4 }));
 
-    // 6) Pendulum bridge — vertical-arc timing for variety (z 66.5..75.5)
-    this._platform({ x: 0, z: 71, w: 5, d: 9 });
-    this._add(new Pendulum(S, P, this.assets, { x: 0, y: 0, z: 68.5, armLength: 3, swing: 0.8, speed: 1.6 }));
-    this._add(new Pendulum(S, P, this.assets, { x: 0, y: 0, z: 73.5, armLength: 3, swing: 0.8, speed: 1.6, phase: Math.PI }));
+    // --- Section 2: conveyor strip + raised cover blocks ---
+    this._add(new Conveyor(S, P, this.assets, { x: 0, y: DECK.top + 0.06, z: 18, w: 6, d: 6, dir: 'z', speed: -3.5 }));
+    this._block({ x: -4.5, z: 18, w: 2, h: 2, d: 4, color: 'blue' });
+    this._block({ x: 4.5, z: 18, w: 2, h: 2, d: 4, color: 'blue' });
+    this._checkpoint(0, 16, DECK.top);
 
-    // 7) Ramp up to the high tier, then a wide rest pad before the climax.
-    this._ramp({ x: 0, z: 77.5, w: 6, fromTop: 0, toTop: 2, length: 4 });
-    this._platform({ x: 0, z: 82, w: 7, d: 5, top: 2 }); // rest pad (z 79.5..84.5)
-    this._checkpoint(0, 82, 2);
+    // --- Section 3: big red pipe arch + swinging hammers ---
+    this._prop('red', 'pipe_180_A', { x: 0, y: DECK.top, z: 24, uniform: 6, rotY: Math.PI / 2 });
+    this._add(new Pendulum(S, P, this.assets, { x: -2, y: DECK.top, z: 23, armLength: 3, swing: 0.8, speed: 1.7 }));
+    this._add(new Pendulum(S, P, this.assets, { x: 2, y: DECK.top, z: 26, armLength: 3, swing: 0.8, speed: 1.7, phase: Math.PI }));
+    this._prop('red', 'ball', { x: -5, y: DECK.top, z: 22, uniform: 1.4 });
 
-    // 8) Spike-roller corridor (z 83..97). Rollers escalate; mid checkpoint.
-    this._platform({ x: 0, z: 90, w: 6, d: 14, top: 2, color: COLORS.platformAlt });
-    this._add(new SpikeRoller(S, P, this.assets, { x: 0, y: 2, z: 86.5, span: 5.2, radius: 0.6, range: 3, speed: 1.4 }));
-    this._add(new SpikeRoller(S, P, this.assets, { x: 0, y: 2, z: 93.5, span: 5.2, radius: 0.6, range: 3, speed: 1.8, phase: Math.PI }));
-    this._add(new Gear(S, P, this.assets, { x: -4, y: 3, z: 90, radius: 1.6, speed: 1.2 }));
-    this._add(new Gear(S, P, this.assets, { x: 4, y: 3, z: 90, radius: 1.6, speed: -1.2 }));
-    this._checkpoint(0, 90, 2); // relief between the two rollers
+    // --- Section 4: spinning saws + gears + rails ---
+    this._add(new SpikeRoller(S, P, this.assets, { x: 0, y: DECK.top, z: 30, span: 6, radius: 0.7, range: 3, speed: 1.4 }));
+    this._add(new Gear(S, P, this.assets, { x: -4.5, y: DECK.top + 1, z: 30, radius: 1.4, speed: 1.2 }));
+    this._add(new Gear(S, P, this.assets, { x: 4.5, y: DECK.top + 1, z: 30, radius: 1.4, speed: -1.2 }));
+    this._checkpoint(0, 33, DECK.top);
 
-    // 9) Finish podium (z 97.5..106.5)
-    this._platform({ x: 0, z: 102, w: 10, d: 9, top: 2, color: COLORS.finish });
-    this._add(new Gate(S, P, this.assets, { x: 0, y: 2, z: 105.5, width: 7, height: 4.5, color: COLORS.finish }));
-    this._buildCrown(0, 102, 2);
+    // --- Section 5: ramp up to a raised platform, swiper on top, slope down ---
+    this._ramp({ x: 0, z: 36, w: 6, fromTop: DECK.top, toTop: DECK.top + 2, length: 3.5 });
+    this._block({ x: 0, z: 39.5, w: 8, h: 2, d: 4, color: 'blue' });
+    this._add(new SpinningBeam(S, P, this.assets, { x: 0, y: DECK.top + 2, z: 39.5, length: 4.5, height: 1.0, speed: -1.6 }));
+    this._ramp({ x: 0, z: 43, w: 6, fromTop: DECK.top + 2, toTop: DECK.top, length: 3.5 });
+    this._prop('blue', 'signage_arrows_right', { x: 4, y: DECK.top + 2, z: 39.5, uniform: 3 });
+
+    // --- Finish: green podium block, archway, star + flag ---
+    this._block({ x: 0, z: 46.5, w: 8, h: 1, d: 4, top: DECK.top + 0.5, color: 'green' });
+    this._add(new Gate(S, P, this.assets, { x: 0, y: DECK.top + 0.5, z: 48, width: 9, height: 5, color: COLORS.finish }));
+    this._buildCrown(0, 46.5, DECK.top + 0.5);
+
+    // Scattered decorations to fill it out like the promo.
+    const scatter = [
+      ['red', 'cone', -5, 14], ['red', 'cone', 5, 27], ['yellow', 'barrier_1x1x1', -5, 35],
+      ['red', 'ball', 5, 41], ['red', 'cone', -4.5, 44],
+    ];
+    for (const [c, n, sx, sz] of scatter) this._prop(c, n, { x: sx, y: DECK.top, z: sz, uniform: 1.4 });
+
+    // Floating collectible stars over the path (visual flair).
+    for (const [sx, sz] of [[-2, 20], [2, 28], [0, 37]]) {
+      const star = this.assets.get('yellow', 'star');
+      if (star) {
+        fitUniform(star, 1.2);
+        star.position.set(sx, DECK.top + 3, sz);
+        star.userData.spin = true;
+        this.scene.add(star);
+        this.obstacles.push({ update: (dt) => { star.rotation.y += dt * 1.5; } });
+      }
+    }
   }
 
   _buildCrown(x, z, top) {
-    const star = this.assets.get('yellow', 'star');
-    let crown;
-    if (star) {
-      fitUniform(star, 1.6);
-      star.castShadow = true;
-      this.crownMesh = star;
-      crown = star;
+    let crown = this.assets.get('yellow', 'star');
+    if (crown) {
+      fitUniform(crown, 1.8);
     } else {
       crown = new THREE.Group();
       const gold = new THREE.MeshStandardMaterial({ color: 0xffd23f, metalness: 0.6, roughness: 0.25 });
-      const band = new THREE.Mesh(new THREE.CylinderGeometry(0.55, 0.55, 0.4, 16, 1, true), gold);
-      band.material.side = THREE.DoubleSide;
-      crown.add(band);
-      for (let i = 0; i < 6; i += 1) {
-        const a = (i / 6) * Math.PI * 2;
-        const spike = new THREE.Mesh(new THREE.ConeGeometry(0.16, 0.5, 8), gold);
-        spike.position.set(Math.cos(a) * 0.5, 0.35, Math.sin(a) * 0.5);
-        crown.add(spike);
-      }
-      crown.castShadow = true;
-      this.crownMesh = crown;
+      crown.add(new THREE.Mesh(new THREE.ConeGeometry(0.5, 0.8, 5), gold));
     }
-    this.crownBaseY = top + 1.5;
+    crown.castShadow = true;
+    this.crownMesh = crown;
+    this.crownBaseY = top + 1.6;
     crown.position.set(x, this.crownBaseY, z);
     this.scene.add(crown);
-
     this.finish = {
       center: new THREE.Vector3(x, top + 1.5, z),
-      half: new THREE.Vector3(5, 2.5, 4.5),
+      half: new THREE.Vector3(4.5, 2.5, 2.5),
     };
   }
-
-  // ---- per-frame -----------------------------------------------------------
 
   update(dt, elapsed) {
     for (const o of this.obstacles) o.update(dt, elapsed);
@@ -254,15 +266,10 @@ export class Level {
     }
   }
 
-  // Surface velocity (conveyor push / platform carry) under the player, if any.
   surfaceVelocity(player) {
     const t = player.body.translation();
     const maxToi = CONFIG.player.halfHeight + CONFIG.player.radius + 0.25;
-    const handle = this.physics.groundSurfaceHandle(
-      { x: t.x, y: t.y, z: t.z },
-      maxToi,
-      player.collider,
-    );
+    const handle = this.physics.groundSurfaceHandle({ x: t.x, y: t.y, z: t.z }, maxToi, player.collider);
     if (handle == null) return null;
     const provider = this.surfaceByHandle.get(handle);
     return provider ? provider() : null;
@@ -270,9 +277,7 @@ export class Level {
 
   checkHazard(pos) {
     const pr = CONFIG.player.radius;
-    for (const h of this.hazards) {
-      if (h.hitTest(pos, pr)) return true;
-    }
+    for (const h of this.hazards) if (h.hitTest(pos, pr)) return true;
     return false;
   }
 

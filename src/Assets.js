@@ -23,6 +23,13 @@ export const PRELOAD = [
   // arches / gates / decoration
   'blue/arch_wide', 'red/arch_wide', 'blue/hoop',
   'blue/arch_tall', 'green/arch_tall',
+  // raised blocks, pipes, rails, signage, nets, accents (dense diorama dressing)
+  'blue/platform_4x4x2', 'blue/platform_2x2x2', 'green/platform_4x4x2',
+  'red/pipe_180_A', 'red/pipe_straight_A', 'red/pipe_90_A',
+  'blue/railing_straight_double', 'blue/railing_corner_double',
+  'blue/signage_arrows_right', 'blue/signage_arrow_stand',
+  'blue/safetynet_4x2x1',
+  'red/barrier_2x1x2', 'yellow/barrier_1x1x1', 'red/cone', 'red/ball',
   // flags / goal
   'green/flag_C', 'green/flag_B', 'yellow/star',
   // extras
