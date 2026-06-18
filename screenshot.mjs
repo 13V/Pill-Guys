@@ -25,7 +25,7 @@ page.on('console', (m) => {
 });
 page.on('pageerror', (e) => console.log('PAGE EXCEPTION:', e.message));
 
-await page.goto(url, { waitUntil: 'load' });
+await page.goto(`${url}?nopost`, { waitUntil: 'load' });
 await page.waitForSelector('#play-button:not([disabled])', { timeout: 45000 });
 await page.waitForTimeout(500);
 
@@ -35,6 +35,7 @@ await page.click('#play-button');
 await page.waitForTimeout(300);
 await page.evaluate(() => {
   window.game.state = 'ready';
+  window.game._noPost = true; // skip slow GTAO in software WebGL for screenshots
 });
 
 async function shot(name, p) {

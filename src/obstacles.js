@@ -100,7 +100,13 @@ export class SpikeRoller {
     const saw = assets.get('blue', 'saw_trap');
     if (saw) {
       this.usingModel = true;
+      // Scale the saw across the lane (~ the span) and drop it so its underside
+      // rests just above the deck. The spin is about Y, so this Y-shift is on the
+      // spin axis and stays put as it rotates.
       fitUniform(saw, this.span);
+      const box = new THREE.Box3().setFromObject(saw);
+      const deckLocalY = -radius; // deck surface in group-local space (center is radius above deck)
+      saw.position.y += deckLocalY - box.min.y + 0.02;
       this.spinner.add(saw);
     } else {
       // Cylinder axis is Y by default; rotate to lie along X (across the path).
@@ -160,9 +166,22 @@ export class Conveyor {
     const res = physics.addStaticBox(center, new THREE.Vector3(w, 1, d));
     this.surfaceHandle = res.collider.handle;
 
+    // Scrolling belt texture (motion cue). Set when the KayKit model exposes a
+    // mapped material; otherwise the model/box stays static.
+    this._beltMap = null;
+
     const model = assets.get('blue', 'conveyor_4x8x1');
     if (model) {
       fitBox(model, { x, y: y - 0.5, z }, { x: w, y: 1, z: d });
+      model.traverse((m) => {
+        if (this._beltMap || !m.isMesh) return;
+        const material = Array.isArray(m.material) ? m.material.find((mm) => mm && mm.map) : m.material;
+        if (material && material.map) {
+          material.map.wrapS = THREE.RepeatWrapping;
+          material.map.wrapT = THREE.RepeatWrapping;
+          this._beltMap = material.map;
+        }
+      });
       scene.add(model);
     } else {
       const belt = new THREE.Mesh(new THREE.BoxGeometry(w, 1, d), mat(COLORS.belt, { roughness: 0.85 }));
@@ -170,23 +189,6 @@ export class Conveyor {
       belt.receiveShadow = true;
       scene.add(belt);
     }
-
-    // Animated chevrons indicating direction.
-    this.dir = dir;
-    this.length = dir === 'x' ? w : d;
-    this.speedSign = Math.sign(speed) || 1;
-    this.chevrons = [];
-    const chevMat = mat(COLORS.chevron, { metalness: 0.2 });
-    const count = Math.max(3, Math.floor(this.length / 1.5));
-    for (let i = 0; i < count; i += 1) {
-      const chev = new THREE.Mesh(new THREE.BoxGeometry(dir === 'x' ? 0.5 : w * 0.5, 0.12, dir === 'x' ? d * 0.5 : 0.5), chevMat);
-      chev.position.copy(center);
-      chev.position.y = y + 0.06;
-      scene.add(chev);
-      this.chevrons.push(chev);
-    }
-    this._center = new THREE.Vector3(x, y + 0.06, z);
-    this._t = 0;
   }
 
   surfaceVelocity() {
@@ -194,15 +196,9 @@ export class Conveyor {
   }
 
   update(dt) {
-    this._t += dt;
-    const n = this.chevrons.length;
-    this.chevrons.forEach((c, i) => {
-      let p = ((i / n) + this._t * 0.25 * this.speedSign) % 1;
-      if (p < 0) p += 1;
-      const local = (p - 0.5) * this.length;
-      if (this.dir === 'x') c.position.x = this._center.x + local;
-      else c.position.z = this._center.z + local;
-    });
+    if (this._beltMap) {
+      this._beltMap.offset.y += dt * 0.35 * Math.sign(this.push.z || this.push.x || 1);
+    }
   }
 }
 
@@ -325,30 +321,44 @@ export class Gear {
   constructor(scene, _physics, assets, opts) {
     const { x, y, z, radius = 1.6, speed = 1, tilt = 0 } = opts;
     this.speed = speed;
+    // group: position + `tilt` (aim around world Y). mount: fixed stand-up tilt
+    // so the disc is vertical. spinner: the only accumulating rotation, about the
+    // geometry's own face-normal, so it spins in-plane without wobble.
     this.group = new THREE.Group();
+    const mount = new THREE.Group();
+    this.spinner = new THREE.Group();
+    mount.add(this.spinner);
+    this.group.add(mount);
     const saw = assets.get('blue', 'saw_trap');
     if (saw) {
       fitUniform(saw, radius * 2);
-      this.group.add(saw);
+      this.spinner.add(saw);
+      // KayKit saw_trap is authored lying flat (face-normal up / +Y). Stand it up
+      // so the face points down the lane (±Z); spin stays on its own +Y.
+      mount.rotation.x = Math.PI / 2;
+      this._spinAxis = 'y';
     } else {
       const disc = new THREE.Mesh(new THREE.CylinderGeometry(radius, radius, 0.4, 24), mat(COLORS.metal, { metalness: 0.3 }));
-      disc.rotation.x = Math.PI / 2;
-      this.group.add(disc);
+      disc.rotation.x = Math.PI / 2; // vertical disc, face-normal along local +Z
+      this.spinner.add(disc);
       const toothMat = mat(COLORS.metal, { metalness: 0.3 });
       for (let i = 0; i < 10; i += 1) {
         const a = (i / 10) * Math.PI * 2;
         const tooth = new THREE.Mesh(new THREE.BoxGeometry(0.5, 0.5, 0.5), toothMat);
         tooth.position.set(Math.cos(a) * radius, Math.sin(a) * radius, 0);
-        this.group.add(tooth);
+        this.spinner.add(tooth);
       }
+      this._spinAxis = 'z';
     }
+    // `tilt` swings the upright disc to face the lane from either side.
     this.group.position.set(x, y, z);
     this.group.rotation.y = tilt;
     scene.add(this.group);
   }
 
   update(dt) {
-    this.group.rotation.z += dt * this.speed;
+    // Single, steady spin about the disc's own face-normal axis.
+    this.spinner.rotation[this._spinAxis] += dt * this.speed;
   }
 }
 

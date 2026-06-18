@@ -10,6 +10,7 @@ import {
   TubeArch,
   Gate,
 } from './obstacles.js';
+import { scatter } from './decorations.js';
 
 const COLORS = {
   platform: 0x2fb6ff,
@@ -218,24 +219,19 @@ export class Level {
     this._add(new Gate(S, P, this.assets, { x: 0, y: DECK.top + 0.5, z: 48, width: 9, height: 5, color: COLORS.finish }));
     this._buildCrown(0, 46.5, DECK.top + 0.5);
 
-    // Scattered decorations to fill it out like the promo.
-    const scatter = [
-      ['red', 'cone', -5, 14], ['red', 'cone', 5, 27], ['yellow', 'barrier_1x1x1', -5, 35],
-      ['red', 'ball', 5, 41], ['red', 'cone', -4.5, 44],
-    ];
-    for (const [c, n, sx, sz] of scatter) this._prop(c, n, { x: sx, y: DECK.top, z: sz, uniform: 1.4 });
-
     // Floating collectible stars over the path (visual flair).
     for (const [sx, sz] of [[-2, 20], [2, 28], [0, 37]]) {
       const star = this.assets.get('yellow', 'star');
       if (star) {
         fitUniform(star, 1.2);
         star.position.set(sx, DECK.top + 3, sz);
-        star.userData.spin = true;
         this.scene.add(star);
         this.obstacles.push({ update: (dt) => { star.rotation.y += dt * 1.5; } });
       }
     }
+
+    // Dense decorative dressing along the deck edges (packed-promo look).
+    scatter(S, this.assets, DECK);
   }
 
   _buildCrown(x, z, top) {

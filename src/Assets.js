@@ -31,9 +31,19 @@ export const PRELOAD = [
   'blue/safetynet_4x2x1',
   'red/barrier_2x1x2', 'yellow/barrier_1x1x1', 'red/cone', 'red/ball',
   // flags / goal
-  'green/flag_C', 'green/flag_B', 'yellow/star',
+  'green/flag_C', 'green/flag_B', 'green/flag_A', 'red/flag_B', 'yellow/star',
   // extras
   'blue/spring_pad', 'blue/barrier_4x1x4',
+  // ---- decoration library (used by decorations.js to dress the deck) ----
+  'red/barrier_2x1x1', 'yellow/barrier_2x1x1', 'green/barrier_2x1x2',
+  'yellow/barrier_1x1x2', 'red/barrier_2x1x2', 'blue/barrier_2x1x4',
+  'blue/bracing_medium', 'blue/bracing_small',
+  'blue/railing_corner_double', 'blue/signage_arrows_left', 'blue/signage_arrow_wall',
+  'blue/floor_net_2x2x1', 'blue/safetynet_2x2x1', 'blue/safetynet_6x2x1',
+  'red/pipe_90_B', 'red/pipe_end', 'blue/pipe_straight_A',
+  'yellow/chest', 'yellow/chest_large', 'blue/bomb_A', 'red/heart', 'yellow/diamond',
+  'yellow/cone', 'yellow/ball', 'blue/spikeblock_up', 'red/spikeblock_up',
+  'yellow/platform_4x4x1', 'green/platform_4x4x1', 'yellow/platform_6x6x1',
 ];
 
 export class Assets {

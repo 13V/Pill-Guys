@@ -1,5 +1,10 @@
 import * as THREE from 'three';
 import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
+import { EffectComposer } from 'three/addons/postprocessing/EffectComposer.js';
+import { RenderPass } from 'three/addons/postprocessing/RenderPass.js';
+import { GTAOPass } from 'three/addons/postprocessing/GTAOPass.js';
+import { SMAAPass } from 'three/addons/postprocessing/SMAAPass.js';
+import { OutputPass } from 'three/addons/postprocessing/OutputPass.js';
 import { CONFIG } from './config.js';
 import { PhysicsWorld } from './PhysicsWorld.js';
 import { Assets } from './Assets.js';
@@ -17,6 +22,11 @@ export class Game {
     this.state = STATE.READY;
     this.elapsed = 0;
     this.clock = new THREE.Clock();
+    // `?nopost` disables the (software-WebGL-slow) post-processing — used by the
+    // headless screenshot tool. Real GPU runs keep the full GTAO + SMAA pipeline.
+    this._noPost =
+      typeof location !== 'undefined' &&
+      new URLSearchParams(location.search).has('nopost');
 
     this._initRenderer();
     this._initScene();
@@ -107,6 +117,60 @@ export class Game {
     floor.position.y = -8;
     floor.receiveShadow = true;
     this.scene.add(floor);
+
+    this._initComposer();
+  }
+
+  _initComposer() {
+    if (this._noPost) return; // screenshots skip the heavy pipeline entirely
+    const w = window.innerWidth;
+    const h = window.innerHeight;
+
+    // Offline-render-quality pipeline: GTAO contact shading + SMAA, with the
+    // final OutputPass owning tone mapping + sRGB so we never double-grade.
+    this.composer = new EffectComposer(this.renderer);
+
+    this.renderPass = new RenderPass(this.scene, this.camera);
+    this.composer.addPass(this.renderPass);
+
+    // Ground-truth ambient occlusion. Kept deliberately gentle: screen-space
+    // radius keeps the AO footprint consistent on this large scene, and a low
+    // scale + blendIntensity adds soft crevice shading without going black.
+    this.gtaoPass = new GTAOPass(this.scene, this.camera, w, h);
+    this.gtaoPass.output = GTAOPass.OUTPUT.Default;
+    this.gtaoPass.blendIntensity = 0.6;
+    this.gtaoPass.updateGtaoMaterial({
+      radius: 0.35,
+      distanceExponent: 1.0,
+      thickness: 1.0,
+      scale: 0.7,
+      samples: 16,
+      distanceFallOff: 1.0,
+      screenSpaceRadius: true,
+    });
+    // A touch of denoise smoothing so the AO reads as soft shading, not noise.
+    this.gtaoPass.updatePdMaterial({
+      lumaPhi: 10,
+      depthPhi: 2,
+      normalPhi: 3,
+      radius: 4,
+      rings: 2,
+      samples: 16,
+    });
+    this.composer.addPass(this.gtaoPass);
+
+    this.smaaPass = new SMAAPass(w, h);
+    this.composer.addPass(this.smaaPass);
+
+    // OutputPass applies ACESFilmic tone mapping + sRGB conversion. The renderer
+    // keeps its toneMapping set so passes that read it stay consistent, but the
+    // intermediate buffers are linear, so there is no double tone-mapping.
+    this.outputPass = new OutputPass();
+    this.composer.addPass(this.outputPass);
+
+    // Match the renderer's pixel ratio; setPixelRatio re-sizes every pass for us.
+    this.composer.setSize(w, h);
+    this.composer.setPixelRatio(this.renderer.getPixelRatio());
   }
 
   async init() {
@@ -143,6 +207,13 @@ export class Game {
     this.state = STATE.PLAYING;
   }
 
+  _render() {
+    // Headless screenshots set _noPost to skip the (very slow in software
+    // WebGL) post-processing; real GPU runs use the full composer.
+    if (this._noPost) this.renderer.render(this.scene, this.camera);
+    else this.composer.render();
+  }
+
   _frame() {
     const dt = Math.min(this.clock.getDelta(), 1 / 30);
 
@@ -153,7 +224,7 @@ export class Game {
       const c = this._freeCam;
       this.camera.position.set(c.px, c.py, c.pz);
       this.camera.lookAt(c.lx, c.ly, c.lz);
-      this.renderer.render(this.scene, this.camera);
+      this._render();
       return;
     }
 
@@ -185,12 +256,17 @@ export class Game {
       if (this.player) this.followCamera.update(this.player.position, dt);
     }
 
-    this.renderer.render(this.scene, this.camera);
+    this._render();
   }
 
   _onResize() {
-    this.camera.aspect = window.innerWidth / window.innerHeight;
+    const w = window.innerWidth;
+    const h = window.innerHeight;
+    this.camera.aspect = w / h;
     this.camera.updateProjectionMatrix();
-    this.renderer.setSize(window.innerWidth, window.innerHeight);
+    this.renderer.setSize(w, h);
+    // EffectComposer.setSize already propagates the (pixel-ratio-scaled) size to
+    // every pass, including GTAO and SMAA, so no per-pass resize is needed here.
+    this.composer?.setSize(w, h);
   }
 }
