@@ -34,20 +34,30 @@ const BELT_SPEED = 0.35;
 export function createWorldAnim(level) {
   // Caches populated lazily on the first update (the level may still be filling
   // in when createWorldAnim is called, so we defer the traversal one frame).
-  let spinners = null; // [{ obj, speed }]
+  let spinners = null; // [{ obj, speed, axis }]
+  let swingers = null; // [{ obj, axis, amp, speed, phase, base }] — pendulum hazards
   let beltMaps = null; // [THREE.Texture] — unique tread maps, RepeatWrapping enabled
+  let clock = 0;
 
   function collect() {
     spinners = [];
+    swingers = [];
     beltMaps = [];
     const seenMaps = new Set(); // dedupe maps shared across cloned conveyor instances
 
     level.traverse((obj) => {
-      // --- Sawblade / generic spinners ---------------------------------------
+      // --- Sawblade / generic spinners (any axis) ----------------------------
       const spin = obj.userData && obj.userData.spin;
       if (spin) {
         const speed = Number.isFinite(spin.speed) ? spin.speed : DEFAULT_SPIN_SPEED;
-        spinners.push({ obj, speed });
+        spinners.push({ obj, speed, axis: spin.axis || (spin.localY === false ? 'x' : 'y') });
+      }
+
+      // --- Swinging / pendulum hazards (spikeball, hammer, swiper arm) --------
+      const sw = obj.userData && obj.userData.swing;
+      if (sw) {
+        const axis = sw.axis || 'z';
+        swingers.push({ obj, axis, amp: sw.amp ?? 0.6, speed: sw.speed ?? 2, phase: sw.phase || 0, base: obj.rotation[axis] });
       }
 
       // --- Conveyor belt 'threads' materials ---------------------------------
@@ -74,10 +84,18 @@ export function createWorldAnim(level) {
     update(dt) {
       if (spinners === null) collect();
       if (!Number.isFinite(dt)) return;
+      clock += dt;
 
-      // Spin each tagged disc about its own local Y (the disc normal).
-      for (const { obj, speed } of spinners) {
-        obj.rotateY(speed * dt);
+      // Spin each tagged hazard about the requested local axis.
+      for (const { obj, speed, axis } of spinners) {
+        if (axis === 'x') obj.rotateX(speed * dt);
+        else if (axis === 'z') obj.rotateZ(speed * dt);
+        else obj.rotateY(speed * dt);
+      }
+
+      // Swing each pendulum hazard around its base rotation.
+      for (const s of swingers) {
+        s.obj.rotation[s.axis] = s.base + s.amp * Math.sin(clock * s.speed + s.phase);
       }
 
       // Scroll each belt's tread along its travel axis (V → toward world +X).

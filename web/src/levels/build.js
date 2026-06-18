@@ -182,6 +182,18 @@ export async function buildLevel(level, { scene, physics }) {
       if (hz.lethal) sensor(hz.cx, top + 0.8, hz.cz, 2, 0.8, 2, 'death');
     } else if (hz.kind === 'cone') {
       P(['cone', 'red', hz.cx, hz.cz, top]); // decorative warning only
+    } else if (hz.kind === 'menace') {
+      // Generic animated hazard: ANY hazard model, optional spin/swing, optional
+      // lethal box. Used to scatter the full hazard roster for chaos. Decorative
+      // by default (no death box) so it never blocks a lane; flag lethal sparingly.
+      const dy = hz.dy ?? 0;
+      const mp = place(group, [hz.model, hz.color || 'neutral', hz.cx, hz.cz, top + dy, hz.ry || 0, hz.rx || 0, hz.rz || 0]);
+      tasks.push(mp.then((o) => {
+        if (!o) return;
+        if (hz.spin) o.userData.spin = { axis: hz.spin.axis || 'y', speed: hz.spin.speed ?? 5, localY: hz.spin.localY };
+        if (hz.swing) o.userData.swing = { axis: hz.swing.axis || 'z', amp: hz.swing.amp ?? 0.6, speed: hz.swing.speed ?? 2, phase: hz.swing.phase || 0 };
+      }));
+      if (hz.lethal) sensor(hz.cx, top + (hz.lethalDy ?? 0.6), hz.cz, hz.hx ?? 0.8, hz.hy ?? 0.8, hz.hzz ?? 0.8, 'death');
     }
   }
 
