@@ -26,13 +26,14 @@ export const hazards = [
   // entry hub C: decorative saw only (menace; no death sensor => never blocks)
   { kind: 'sawblade', cx: 12, cz: 0 },                       // decorative menace on hub C
 
-  // BRANCH 1 risky lane (z+3): the level's ONE lethal hazard — a size-2 spike gauntlet.
-  // Deliberately size-2 (a 2u jump) not size-4: it spans the full w2 lane (so it's a real
-  // on-the-line jump) yet is GENTLER than L4's size-4 gauntlet, keeping L3 easier than L4.
-  // Lane 14..22 gives a 3u run-up (14..17) and a 3u landing (19..22) around the spikes.
-  { kind: 'spikes', cx: 18, cz: 3, size: 2 },                // RISKY lane gauntlet (spikes x17..19; run-up 14..17, land 19..22)
-  { kind: 'cone', cx: 15, cz: 3 },                           // warn the risky lane (before)
-  { kind: 'cone', cx: 21, cz: 3 },                           // warn the risky lane (after)
+  // BRANCH 1 risky lane (z+3): the level's ONE lethal hazard — a size-2 spike gauntlet,
+  // placed RIGHT off the C hub so you jump it and land on the boost belt (Level-1 pattern).
+  // Deliberately size-2 (a 2u jump) not size-4: it spans the full w2 lane (a real on-the-
+  // line jump) yet is GENTLER than L4's size-4 gauntlet, keeping L3 easier than L4. You
+  // take off from the C hub (ends x14) over the spikes (x15..17) onto the belt (starts x18).
+  { kind: 'spikes', cx: 16, cz: 3, size: 2 },                // RISKY gauntlet (spikes x15..17; takeoff off C hub x14, land on belt x18)
+  { kind: 'cone', cx: 14.5, cz: 3 },                         // warn the risky lane (gauntlet edge)
+  { kind: 'cone', cx: 19, cz: 3 },                           // warn the risky lane (belt side)
 
   // BRANCH 2 risky lane (z+3, top8): DECORATIVE sawblade in the 4u pit (a pit under a
   // real gap — the jump is the challenge; NO lethal flag => no death sensor).

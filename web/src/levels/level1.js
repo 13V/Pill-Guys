@@ -22,11 +22,11 @@ export default {
     // ---- BRANCH (x16..30): the time-save split. ----
     // SAFE lane (far, z-3): a continuous clear walkway the whole branch — no
     // boost, so you cover it at the base 8 u/s (the slower, surer route).
-    { kind: 'strip', x0: 15, x1: 34, z: -3, w: 2 },                // SAFE probe
-    { kind: 'conveyor', cx: 23, cz: 3, len: 22, w: 4 },            // RISKY belt probe x:12..34
+    { kind: 'strip', x0: 15, x1: 36, z: -3, w: 2 },                // SAFE probe
+    { kind: 'conveyor', cx: 24, cz: 3, len: 24, w: 4 },            // RISKY belt probe x:12..36
 
-    { kind: 'platform', cx: 36, cz: 0, w: 6, d: 6, rails: true },  // REJOIN hub probe
-    { kind: 'finish', cx: 41, cz: 0, w: 6, d: 6, top: 10 },        // finish probe
+    { kind: 'platform', cx: 38, cz: 0, w: 6, d: 6, rails: true },  // REJOIN hub probe
+    { kind: 'finish', cx: 43, cz: 0, w: 6, d: 6, top: 10 },        // finish probe
   ],
   hazards: [
     { kind: 'spikes', cx: 18, cz: 3, size: 4 },   // THE one on-line challenge: risky-lane jump-over gauntlet (x:16..20), belt is right after
@@ -37,9 +37,9 @@ export default {
   // One spring per lane z (on the rejoin hub) so whichever lane you arrive in
   // (far / near / center) launches you up onto the finish tower (top 5 -> top 10).
   springs: [
-    { cx: 37, cz: -3 },
-    { cx: 37, cz: 3 },
-    { cx: 37, cz: 0 },
+    { cx: 39, cz: -3 },
+    { cx: 39, cz: 3 },
+    { cx: 39, cz: 0 },
   ],
   coins: [
     { x: 3, y: 6.2, z: 0 }, { x: 8, y: 6.2, z: 0 },   // spine: spawn + conveyor (2)

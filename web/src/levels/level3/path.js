@@ -49,12 +49,11 @@ export default {
     // forces a commit, and a flush entry keeps the level compact.
     { kind: 'platform', cx: 12, cz: 0, w: 4, d: 6, rails: true },          // C B1 ENTRY hub      x:10..14  (gap 1 = 4u REAL jump; decorative saw menace)
     { kind: 'strip', x0: 14, x1: 22, z: -3, w: 2 },                        //   SAFE far lane     x:14..22  (flush off C; CLEAR, walked @8u/s)
-    // RISKY near lane (z+3): a short solid run-up (x14..17), then a FORWARD CONVEYOR
-    // (x17..26) you ride at ~12u/s straight through the gauntlet and into the rejoin.
-    // The belt is the SHORTCUT (12 vs the safe lane's 8). The size-2 gauntlet (spikes
-    // x17..19) is the RISK: you take off from the run-up (~x16) and land back on the belt.
-    { kind: 'strip', x0: 14, x1: 17, z: 3,  w: 2 },                        //   RISKY run-up      x:14..17  (flush off C; solid takeoff before the spikes)
-    { kind: 'conveyor', cx: 21.5, cz: 3, len: 9, w: 4 },                   //   RISKY belt (+X)   x:17..26  (~12u/s; spikes x17..19 sit on it; rides into R1)
+    // RISKY near lane (z+3): jump the size-2 gauntlet RIGHT off the C hub (the RISK), land
+    // on a long FORWARD CONVEYOR (x18..26) and ride it GROUNDED at ~12u/s into the rejoin
+    // (the SHORTCUT — same pattern as Level 1). Doing the gauntlet jump first keeps the
+    // whole belt a grounded boost, so RISKY clearly beats the safe lane's 8u/s walk.
+    { kind: 'conveyor', cx: 22, cz: 3, len: 8, w: 4 },                     //   RISKY belt (+X)   x:18..26  (~12u/s, ridden grounded; lands the gauntlet jump and rides into R1)
     { kind: 'platform', cx: 24, cz: 0, w: 4, d: 6, rails: true },          // R1 B1 REJOIN hub    x:22..26  (lanes land flush; w4 d6)
 
     // --- spine: CONVEYOR (+X) flush off R1, then spring #1 lifts up to the raised section ---
@@ -71,7 +70,7 @@ export default {
     // then a FORWARD CONVEYOR landing (x54..60) you ride at ~12u/s into the rejoin (the
     // SHORTCUT). The leap clears the pit + its decorative saw and drops you onto the belt.
     { kind: 'strip', x0: 47, x1: 50, z: 3,  w: 2, top: 8 },                //   RISKY run-up      x:47..50  (flush off H; 3u run-up to the pit)
-    { kind: 'conveyor', cx: 55.5, cz: 3, len: 3, w: 4, top: 8 },           //   RISKY belt (+X)   x:54..57  (~12u/s; lands the 4u pit-jump, rides toward R2; ENDS before the spring @cx58 so the launch is clean)
+    { kind: 'conveyor', cx: 55, cz: 3, len: 2, w: 4, top: 8 },             //   RISKY belt (+X)   x:54..56  (~12u/s; lands the 4u pit-jump; ENDS at x56 so the 3u drop onto R2 lands cleanly, like the safe path)
     { kind: 'platform', cx: 58, cz: 0, w: 4, d: 6, rails: true },          // R2 B2 REJOIN + spring#2 pad  x:56..60  (lanes drop 3u, land flush; w4 d6)
 
     { kind: 'finish',   cx: 64, cz: 0, w: 4, d: 6, top: 10 },              // K finish (d6 win sensor spans z+-3)  x:62..66  (spring #2 lifts +5 & ~7u fwd)

@@ -53,31 +53,37 @@ export default {
 
     // ---- BRANCH 1 (x23..34): conveyor-fed gauntlet split. 2u hop off hub B. ----
     { kind: 'platform', cx: 18, cz: 0, w: 6, d: 6, rails: true },  // B split hub        x:15..21  (belt feeds in)
+    { kind: 'conveyor', cx: 18, cz: 3, len: 6, w: 4 },             // B hub NEAR boost  x:15..21  (cz3 -> z1..5: risky-only +X across the hub; SAFE at z-3 untouched)
     { kind: 'strip', x0: 23, x1: 34, z: -3, w: 2 },                // B1 SAFE (far)      x:23..34  (clear, slower)
     { kind: 'strip', x0: 23, x1: 34, z:  3, w: 2 },                // B1 RISKY (near)    x:23..34  (gauntlet cx29: runway x23..27, land x31..34)
     { kind: 'conveyor', cx: 25,   cz: 3, len: 4, w: 4 },           // B1 RISKY run-up belt  x:23..27  (+X ~12u/s into the gauntlet leap; ends before spikes x27..31)
     { kind: 'conveyor', cx: 32.5, cz: 3, len: 3, w: 4 },           // B1 RISKY landing belt x:31..34  (+X ~12u/s after the gauntlet -> hub C)
 
     { kind: 'platform', cx: 37, cz: 0, w: 6, d: 6, rails: true },  // C rejoin hub       x:34..40  (rejoin 1 + saw-hub pipe arch; entry branch 2)
+    { kind: 'conveyor', cx: 37, cz: 3, len: 6, w: 4 },             // C hub NEAR boost  x:34..40  (risky-only +X across the rejoin; SAFE at z-3 untouched)
 
     // ---- BRANCH 2 (x42..53): TWO HARD WAYS — two genuinely different on-line jumps. ----
     { kind: 'strip', x0: 42, x1: 47, z: -3, w: 2 },                // B2 SAFE seg1 (far) x:42..47  (tight w2)
     { kind: 'strip', x0: 50, x1: 53, z: -3, w: 2 },                // B2 SAFE seg2 (far) x:50..53  (after a comfy 3u gap x47..50)
     { kind: 'strip', x0: 42, x1: 47, z:  3, w: 2 },                // B2 RISKY seg1 (near) x:42..47 (saw spins in the gap pit, on the z=3 line)
-    { kind: 'conveyor', cx: 45, cz: 3, len: 4, w: 4 },             // B2 RISKY run-up belt x:43..47 (+X ~12u/s into the 4u saw-gap leap x47..51)
+    { kind: 'conveyor', cx: 44.5, cz: 3, len: 5, w: 4 },           // B2 RISKY run-up belt x:42..47 (+X ~12u/s across all of seg1, into the 4u saw-gap leap x47..51)
     { kind: 'strip', x0: 51, x1: 53, z:  3, w: 2 },                // B2 RISKY seg2 (near) x:51..53 (after a bigger 4u gap x47..51 over the saw)
+    { kind: 'conveyor', cx: 52, cz: 3, len: 2, w: 4 },             // B2 RISKY landing belt x:51..53 (+X ~12u/s off the saw-gap landing -> hub D)
 
     { kind: 'platform', cx: 56, cz: 0, w: 6, d: 6, rails: true },  // D spikeblock hub   x:53..59  (rejoin 2 + center thread; entry M3)
+    { kind: 'conveyor', cx: 56, cz: 3, len: 6, w: 4 },             // D hub NEAR boost  x:53..59  (cz3 -> z2.5..3.5 walked; clear of the center spikeblocks z<=1.6; SAFE at z-3 untouched)
     { kind: 'conveyor', cx: 63, cz: 0, len: 8, w: 6 },             // M3 belt (+X), w6 spans both lanes  x:59..67
 
     // ---- BRANCH 3 (x75..90): conveyor-into-gauntlet FINALE split (HARDEST line). ----
     { kind: 'platform', cx: 70, cz: 0, w: 6, d: 6, rails: true },  // E split hub        x:67..73  (belt feeds in)
+    { kind: 'conveyor', cx: 70, cz: 3, len: 6, w: 4 },             // E hub NEAR boost  x:67..73  (risky-only +X across the final split hub; SAFE at z-3 untouched)
     { kind: 'strip', x0: 75, x1: 90, z: -3, w: 2 },                // B3 SAFE (far)      x:75..90  (clear, walks onto hub F)
     { kind: 'strip', x0: 75, x1: 86, z:  3, w: 2 },                // B3 RISKY (near)    x:75..86  (gauntlet cx81: runway x75..79, land x83..86)
     { kind: 'conveyor', cx: 77,   cz: 3, len: 4, w: 4 },           // B3 RISKY run-up belt  x:75..79  (+X ~12u/s into the gauntlet leap; ends before spikes x79..83)
     { kind: 'conveyor', cx: 84.5, cz: 3, len: 3, w: 4 },           // B3 RISKY landing belt x:83..86  (+X ~12u/s after the gauntlet, run-up into the trailing 4u saw-gap x86..90 -> hub F)
 
     { kind: 'platform', cx: 93, cz: 0, w: 6, d: 6 },               // F spring deck      x:90..96  (rejoin 3; RISKY jumps a 4u gap x86..90 onto it; per-lane springs -> tower)
+    { kind: 'conveyor', cx: 91, cz: 3, len: 2, w: 4 },             // F entry NEAR boost x:90..92  (risky-only +X off the gap landing toward the cz3 spring; ENDS at x92, before the spring sensor x92.1, so the launch stays clean)
     { kind: 'finish', cx: 100, cz: 0, w: 6, d: 6, top: 10 },       // finish tower (w6 so every lane lands)  x:97..103
   ],
 };

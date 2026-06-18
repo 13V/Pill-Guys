@@ -15,9 +15,9 @@ export const coins = [
 
   // BRANCH 1 rewards (top 5): SAFE 1 / RISKY 3
   { x: 18, y: 6.4, z: -3 },    // SAFE far lane — 1 normal coin
-  { x: 15, y: 6.8, z: 3 },     // RISKY near lane — coin before the gauntlet
-  { x: 18, y: 7.0, z: 3 },     // RISKY near lane — coin in the gauntlet arc (jump it)
-  { x: 21, y: 6.8, z: 3 },     // RISKY near lane — coin after the gauntlet (3 = 3x reward)
+  { x: 16, y: 7.0, z: 3 },     // RISKY near lane — coin in the gauntlet jump arc (x15..17)
+  { x: 21, y: 6.8, z: 3 },     // RISKY near lane — coin on the boost belt (just past the gauntlet)
+  { x: 25, y: 6.8, z: 3 },     // RISKY near lane — coin riding the belt into R1 (3 = 3x reward)
 
   { x: 24, y: 6.4, z: 0 },     // R1 rejoin hub (clean, no center block now)
   { x: 29, y: 6.4, z: 0 },     // riding the conveyor E
