@@ -3,7 +3,8 @@ dist/
 .vite/
 *.log
 
-# scratch render outputs from the polish agents (keep the official preview.png)
+# scratch render outputs from the agents (keep the deliverable shots)
 /*.png
 !/preview.png
+!/gameplay.png
 /previews/*.png

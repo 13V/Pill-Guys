@@ -88,7 +88,10 @@ export async function initPhysics(gravityY = GRAVITY_Y) {
       collider,
       controller,
       computeMove(desired) {
-        controller.computeColliderMovement(collider, desired);
+        // EXCLUDE_SENSORS so trigger volumes (coins/spring/conveyor/finish/death)
+        // are detectable via sensorsOverlapping() without physically blocking the
+        // character like solid walls.
+        controller.computeColliderMovement(collider, desired, RAPIER.QueryFilterFlags.EXCLUDE_SENSORS);
         const m = controller.computedMovement();
         grounded = controller.computedGrounded();
         const t = body.translation();

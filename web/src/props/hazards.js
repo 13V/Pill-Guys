@@ -33,10 +33,6 @@ export async function build(level) {
   const sawCenterY = top - 0.4; // 4.6
   await place(level, ['sawblade', 'neutral', SEG.landmark.cx, 0, sawCenterY, 0, 90, 0]);
 
-  // --- Moving hazard: spike roller resting on the conveyor-side of the deck ---
-  // 4×4×4 cube, origin at center -> origin y = top + 2 so it rests ON the deck.
-  await place(level, ['spikeroller_horizontal', 'neutral', SEG.spikes.cx - 6, 0, top + 2]);
-
   // --- Spring launch on the bridge deck: red pad with a spring sitting in it ---
   await place(level, ['spring_pad', 'red', SEG.bridge.cx, 0, top]);
   await place(level, ['spring', 'neutral', SEG.bridge.cx, 0, top]);
