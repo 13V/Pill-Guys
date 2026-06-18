@@ -1,7 +1,7 @@
 import { createScene } from './scene.js';
-import { buildVisualLevel } from './buildVisual.js';
+import { LEVELS } from './levels/index.js';
+import { buildLevel } from './levels/build.js';
 import { initPhysics, FIXED_DT } from './physics.js';
-import { buildColliders } from './colliders.js';
 import { createInput } from './input.js';
 import { createPlayer } from './player.js';
 import { createFollowCamera } from './followCamera.js';
@@ -13,83 +13,85 @@ import { createParticles } from './effects/particles.js';
 import { createWorldAnim } from './effects/worldAnim.js';
 import { createCoinJuice } from './effects/coins.js';
 
-// Playable entry: visual level + Rapier physics + character + camera + HUD + interactions.
+// Playable entry. Levels are data (src/levels/*); one builder makes visuals +
+// physics. Progression advances by reloading with ?level=N (fresh scene/world),
+// which keeps level switching dead simple and per-level testable.
 async function start() {
-  const { scene, camera, renderer, controls } = createScene();
-  if (controls) controls.enabled = false; // follow camera drives the view in-game
+  const params = new URLSearchParams(location.search);
+  const levelIndex = Math.max(0, Math.min(LEVELS.length - 1, (parseInt(params.get('level'), 10) || 1) - 1));
+  const level = LEVELS[levelIndex];
 
-  const level = await buildVisualLevel(scene);
+  const { scene, camera, renderer, controls } = createScene();
+  if (controls) controls.enabled = false;
 
   const physics = await initPhysics();
-  const world = buildColliders(physics, scene); // { spawn, coins }
+  const built = await buildLevel(level, { scene, physics }); // { group, spawn, coins, finishPos }
+  const world = built;
+
   const events = createEvents();
   const input = createInput();
-  const player = createPlayer(scene, physics, input, world.spawn, events);
-  // Camera directly behind (+Z) and above so its yaw is 0: the strip reads
-  // left->right and "right" maps to world +X with no diagonal drift on the
-  // narrow decks. (An angled offset.x makes movement diagonal and walks the
-  // pill off the edge of the conveyor.)
+  const player = createPlayer(scene, physics, input, built.spawn, events);
   const followCam = createFollowCamera(camera, player, { offset: { x: 0, y: 7.5, z: 11.5 }, lookBias: { x: 0, y: 1, z: 0 } });
-  const hud = createHUD(world.coins ? world.coins.length : 0);
+  const hud = createHUD(built.coins ? built.coins.length : 0);
   const interactions = createInteractions({ physics, player, hud, world, events });
 
-  // Juice: synthesized SFX + visual effects, all driven off the event bus / scene.
   const audio = createAudio(events);
   const particles = createParticles(scene, events);
-  const worldAnim = createWorldAnim(level);
+  const worldAnim = createWorldAnim(built.group);
   const coinJuice = createCoinJuice(world, events);
   if (audio && audio.resume) audio.resume();
 
-  hud.onRestart(() => {
-    player.respawn();
-    hud.reset();
-    followCam.snap();
+  // Small level label (avoids touching hud.js).
+  const label = document.createElement('div');
+  label.style.cssText = 'position:fixed;top:10px;left:50%;transform:translateX(-50%);font:600 14px system-ui,sans-serif;color:#3a4658;background:rgba(255,255,255,0.7);padding:4px 12px;border-radius:14px;pointer-events:none;user-select:none;';
+  label.textContent = `Level ${levelIndex + 1}/${LEVELS.length} — ${level.name}`;
+  document.body.appendChild(label);
+
+  hud.onRestart(() => { player.respawn(); hud.reset(); followCam.snap(); });
+
+  // Progression: on finish, advance to the next level (reload) after a beat.
+  let advancing = false;
+  events.on('finish', () => {
+    if (advancing) return;
+    advancing = true;
+    if (levelIndex + 1 < LEVELS.length) {
+      setTimeout(() => { location.search = `?level=${levelIndex + 2}`; }, 1900);
+    }
   });
 
-  // Warm up the physics so the character settles on the ground before the first frame.
-  for (let i = 0; i < 3; i++) {
-    player.fixedUpdate(FIXED_DT, followCam.yaw());
-    physics.stepOnce();
-    player.syncVisual();
-  }
+  // Level select: number keys jump to a level.
+  window.addEventListener('keydown', (e) => {
+    const n = parseInt(e.key, 10);
+    if (n >= 1 && n <= LEVELS.length) location.search = `?level=${n}`;
+  });
+
+  // Warm up so the character settles before the first frame.
+  for (let i = 0; i < 3; i++) { player.fixedUpdate(FIXED_DT, followCam.yaw()); physics.stepOnce(); player.syncVisual(); }
   followCam.snap();
 
-  // One fixed simulation substep (shared by the rAF loop and the test hook).
   function simStep() {
     const yaw = followCam.yaw();
     player.fixedUpdate(FIXED_DT, yaw);
     physics.stepOnce();
     interactions.update();
     player.syncVisual();
-    if (input.restartPressed && input.restartPressed()) {
-      player.respawn();
-      hud.reset();
-      followCam.snap();
-    }
+    if (input.restartPressed && input.restartPressed()) { player.respawn(); hud.reset(); followCam.snap(); }
   }
 
   let simRunning = true;
-
-  // Test/debug hooks. step()/testWarp()/pause() let the headless integration
-  // test drive the sim deterministically (headless Chromium throttles rAF).
   window.__game = {
     scene, camera, physics, player, world, hud, input, followCam, events,
+    levelIndex, levelCount: LEVELS.length, levelName: level.name,
     pause() { simRunning = false; },
     resume() { simRunning = true; },
-    step(n = 1) {
-      for (let i = 0; i < n; i++) { simStep(); followCam.update(FIXED_DT); }
-    },
-    // Teleport the player without permanently moving the respawn point.
+    step(n = 1) { for (let i = 0; i < n; i++) { simStep(); followCam.update(FIXED_DT); } },
     testWarp(x, y, z) {
-      const s = player.spawn;
-      const o = { x: s.x, y: s.y, z: s.z };
-      s.x = x; s.y = y; s.z = z;
-      player.respawn();
-      s.x = o.x; s.y = o.y; s.z = o.z;
+      const s = player.spawn; const o = { x: s.x, y: s.y, z: s.z };
+      s.x = x; s.y = y; s.z = z; player.respawn(); s.x = o.x; s.y = o.y; s.z = o.z;
     },
   };
   window.__ready = true;
-  console.log('[game] ready');
+  console.log(`[game] ready — level ${levelIndex + 1}/${LEVELS.length} (${level.name})`);
 
   let last = performance.now();
   let acc = 0;
@@ -99,14 +101,9 @@ async function start() {
     if (simRunning) {
       acc += dt;
       let guard = 0;
-      while (acc >= FIXED_DT && guard++ < 5) {
-        simStep();
-        acc -= FIXED_DT;
-      }
+      while (acc >= FIXED_DT && guard++ < 5) { simStep(); acc -= FIXED_DT; }
       followCam.update(dt);
     }
-    // Visual juice advances every frame, independent of the sim-pause the
-    // headless test uses (so the showcase + screenshots stay animated).
     particles.update(dt);
     worldAnim.update(dt);
     coinJuice.update(dt);
