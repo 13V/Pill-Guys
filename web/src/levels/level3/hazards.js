@@ -25,20 +25,23 @@ export const hazards = [
   // entry hub C: decorative saw only (menace; no death sensor => never blocks)
   { kind: 'sawblade', cx: 12, cz: 0 },                       // decorative menace on hub C
 
-  // BRANCH 1 risky lane (z+3): the level's ONE lethal hazard — a size-4 spike gauntlet
-  { kind: 'spikes', cx: 20, cz: 3, size: 4 },                // RISKY lane gauntlet (spikes x18..22; land 16..18 & 22..24)
+  // BRANCH 1 risky lane (z+3): the level's ONE lethal hazard — a size-2 spike gauntlet.
+  // Deliberately size-2 (a 2u jump) not size-4: it spans the full w2 lane (so it's a real
+  // on-the-line jump) yet is GENTLER than L4's size-4 gauntlet, keeping L3 easier than L4.
+  // Lane 16..24 gives a 3u run-up (16..19) and a 3u landing (21..24) around the spikes.
+  { kind: 'spikes', cx: 20, cz: 3, size: 2 },                // RISKY lane gauntlet (spikes x19..21; land 16..19 & 21..24)
   { kind: 'cone', cx: 17, cz: 3 },                           // warn the risky lane (before)
   { kind: 'cone', cx: 23, cz: 3 },                           // warn the risky lane (after)
 
   // BRANCH 2 risky lane (z+3, top8): DECORATIVE sawblade in the 4u pit (a pit under a
   // real gap — the jump is the challenge; NO lethal flag => no death sensor).
-  { kind: 'sawblade', cx: 51, cz: 3, top: 8 },               // decorative menace in the gap (side lane only)
-  { kind: 'cone', cx: 48, cz: 3, top: 8 },                   // warn the risky lane (gap edge)
-  { kind: 'cone', cx: 54, cz: 3, top: 8 },                   // warn the risky lane (landing)
+  { kind: 'sawblade', cx: 55, cz: 3, top: 8 },               // decorative menace in the pit 53..57 (side lane only)
+  { kind: 'cone', cx: 52, cz: 3, top: 8 },                   // warn the risky lane (gap edge)
+  { kind: 'cone', cx: 58, cz: 3, top: 8 },                   // warn the risky lane (landing)
 ];
 export const springs = [
-  // spring #1: hub F (cx38, top5) -> raised hub H (top8). Twins at cz -3/0/+3 so any lane launches.
-  { cx: 38, cz: -3 }, { cx: 38, cz: 0 }, { cx: 38, cz: 3 },
-  // spring #2: hub R2 (cx57, top5) -> finish tower (top10). Twins so any lane launches.
-  { cx: 57, cz: -3 }, { cx: 57, cz: 0 }, { cx: 57, cz: 3 },
+  // spring #1: pad F (cx37, top5) -> raised landing H (top8). Twins at cz -3/0/+3 so any lane launches.
+  { cx: 37, cz: -3 }, { cx: 37, cz: 0 }, { cx: 37, cz: 3 },
+  // spring #2: pad R2 (cx61, top5) -> finish tower (top10). Twins so any lane launches.
+  { cx: 61, cz: -3 }, { cx: 61, cz: 0 }, { cx: 61, cz: 3 },
 ];

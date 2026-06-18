@@ -36,8 +36,9 @@ try {
     g.pause();
     key('ArrowRight', true);
     const spawnX = g.player.spawn.x, finishX = g.world.finishPos.x;
-    let maxX = spawnX, deaths = 0, won = false, stuck = 0, lastX = spawnX, holding = 0, ti = 0;
+    let maxX = spawnX, deaths = 0, won = false, stuck = 0, lastX = spawnX, holding = 0, ti = 0, steps = 0;
     for (let i = 0; i < 4000; i++) {
+      steps = i + 1;
       const t0 = g.player.translation();
       // strafe toward the target lane
       if (t0.z - LANE > 0.4) { key('ArrowDown', false); key('ArrowUp', true); }
@@ -56,9 +57,9 @@ try {
       if (stuck > 240) break;
     }
     for (const k of [...held]) key(k, false);
-    return { spawnX, finishX, maxX: +maxX.toFixed(1), deaths, won, progress: +((maxX - spawnX) / (finishX - spawnX) * 100).toFixed(0) };
+    return { spawnX, finishX, maxX: +maxX.toFixed(1), deaths, won, steps, progress: +((maxX - spawnX) / (finishX - spawnX) * 100).toFixed(0) };
   }, LANE);
-  console.log(`L${LEVEL} lane z=${LANE}: ${r.won ? 'REACHED FINISH ✓' : 'did NOT finish'} — maxX=${r.maxX}/${r.finishX} (${r.progress}%), deaths=${r.deaths}`);
+  console.log(`L${LEVEL} lane z=${LANE}: ${r.won ? 'REACHED FINISH ✓' : 'did NOT finish'} — ${r.steps} steps (${(r.steps / 60).toFixed(1)}s), maxX=${r.maxX}/${r.finishX} (${r.progress}%), deaths=${r.deaths}`);
 } finally {
   await browser.close();
   try { process.kill(-vite.pid, 'SIGKILL'); } catch {}

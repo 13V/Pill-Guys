@@ -31,10 +31,10 @@
 // Deck X-spans & gaps (all gaps <=4u):
 //   A spawn 0..6 | gap 4 (REAL early jump) | C(B1 entry) 10..14
 //   gap 2 onto B1 lanes 16..24 (top5; risky gauntlet @20) | R1 24..28 (flush)
-//   conveyor 28..34 (flush off R1) | gap 2 (belt-assisted) onto F spring pad 36..40
-//   spring#1 -> H raised entry 41..45 (top8, +3 over a 1u gap)
-//   gap 2 onto B2 lanes 47..55 (top8; risky = 4u pit 49..53, land 53..55) | R2 55..59 (top5; spring#2)
-//   gap 2 | K finish 61..65 (top10).   Total length ~65u (was ~90u).
+//   conveyor 28..34 (flush off R1) | gap 1 onto F spring pad 35..39
+//   spring#1 (~+5u up, ~9u fwd) -> H raised LANDING 43..49 (top8, w6 catch pad)
+//   gap 2 onto B2 lanes 51..59 (top8; risky = 4u pit 53..57, land 57..59) | R2 59..63 (top5; spring#2)
+//   gap 2 | K finish 65..69 (top10).   Total length ~69u (was ~90u).
 export default {
   name: 'Furnace Gaps',
   deckTop: 5,
@@ -46,20 +46,22 @@ export default {
     // Reached over the first REAL jump-gap (4u). C is the B1 entry hub (w4 d6).
     { kind: 'platform', cx: 12, cz: 0, w: 4, d: 6, rails: true },          // C B1 ENTRY hub      x:10..14  (gap 1 = 4u REAL jump; decorative saw menace)
     { kind: 'strip', x0: 16, x1: 24, z: -3, w: 2 },                        //   SAFE far lane     x:16..24  (gap 2 onto lane; CLEAR)
-    { kind: 'strip', x0: 16, x1: 24, z: 3,  w: 2 },                        //   RISKY near lane   x:16..24  (gauntlet @20: spikes 18..22, land 16..18 & 22..24)
+    { kind: 'strip', x0: 16, x1: 24, z: 3,  w: 2 },                        //   RISKY near lane   x:16..24  (size-2 gauntlet @20: spikes 19..21, land 16..19 & 21..24)
     { kind: 'platform', cx: 26, cz: 0, w: 4, d: 6, rails: true },          // R1 B1 REJOIN hub    x:24..28  (lanes land flush; w4 d6)
 
-    // --- spine: CONVEYOR (+X) flush off R1, pushing you INTO a jump-gap, then spring #1 ---
+    // --- spine: CONVEYOR (+X) flush off R1, then spring #1 lifts up to the raised section ---
     { kind: 'conveyor', cx: 31, cz: 0, len: 6, w: 6 },                     // E conveyor +X       x:28..34  (flush off R1; belt push helps the next jump)
-    { kind: 'platform', cx: 38, cz: 0, w: 4, d: 6, rails: true },          // F spring#1 pad      x:36..40  (gap 2 = belt-assisted jump off the conveyor)
+    { kind: 'platform', cx: 37, cz: 0, w: 4, d: 6, rails: true },          // F spring#1 pad      x:35..39  (gap 1 off the belt; spring twins here)
 
     // --- BRANCH 2 (top 8, the RAISED section): SAFE clear vs RISKY 4u-gap SHORTCUT ---
-    { kind: 'platform', cx: 43, cz: 0, w: 4, d: 6, top: 8, rails: true },  // H RAISED B2 ENTRY   x:41..45  (spring #1 lifts +3 & fwd over a 1u gap)
-    { kind: 'strip', x0: 47, x1: 55, z: -3, w: 2, top: 8 },                //   SAFE far lane     x:47..55  (gap 2 onto lane; CLEAR, full length)
-    { kind: 'strip', x0: 47, x1: 49, z: 3,  w: 2, top: 8 },                //   RISKY near lane A  x:47..49  (gap 2 onto lane)
-    { kind: 'strip', x0: 53, x1: 55, z: 3,  w: 2, top: 8 },                //   RISKY near lane B  x:53..55  (landing after the 4u pit 49..53)
-    { kind: 'platform', cx: 57, cz: 0, w: 4, d: 6, rails: true },          // R2 B2 REJOIN + spring#2 pad  x:55..59  (lanes drop 3u, land flush; w4 d6)
+    // The spring throws ~+5u up and ~9u forward, so the raised LANDING (H) sits ~9u ahead
+    // of the spring pad and is a generous w6 d6 catch pad spanning z-3..+3.
+    { kind: 'platform', cx: 46, cz: 0, w: 6, d: 6, top: 8, rails: true },  // H RAISED LANDING    x:43..49  (spring #1 arc lands here; w6 catch pad)
+    { kind: 'strip', x0: 51, x1: 59, z: -3, w: 2, top: 8 },                //   SAFE far lane     x:51..59  (gap 2 onto lane; CLEAR, full length)
+    { kind: 'strip', x0: 51, x1: 53, z: 3,  w: 2, top: 8 },                //   RISKY near lane A  x:51..53  (gap 2 onto lane)
+    { kind: 'strip', x0: 57, x1: 59, z: 3,  w: 2, top: 8 },                //   RISKY near lane B  x:57..59  (landing after the 4u pit 53..57)
+    { kind: 'platform', cx: 61, cz: 0, w: 4, d: 6, rails: true },          // R2 B2 REJOIN + spring#2 pad  x:59..63  (lanes drop 3u, land flush; w4 d6)
 
-    { kind: 'finish',   cx: 63, cz: 0, w: 4, d: 6, top: 10 },              // K finish (d6 win sensor spans z+-3)  x:61..65  (spring +5, +4 fwd)
+    { kind: 'finish',   cx: 67, cz: 0, w: 4, d: 6, top: 10 },              // K finish (d6 win sensor spans z+-3)  x:65..69  (spring #2 lifts +5 & ~9u fwd)
   ],
 };
