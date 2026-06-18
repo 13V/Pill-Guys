@@ -1,12 +1,320 @@
 // PARTICLES — bursts for death + coin pickup. Owned by the PARTICLES agent.
 //
 // export function createParticles(scene, events) -> { update(dt) }
-//   On 'death' {position}: a burst of ~16-24 small bits (reds/whites) that fly out,
-//     are pulled down by gravity, and fade/shrink out over ~0.6s.
-//   On 'coin' {position}: a small bright-yellow sparkle pop (~8 bits, quick).
-//   Use THREE.Points (a pooled BufferGeometry) or a small pool of meshes; advance in
-//   update(dt) and cull expired particles. Additive/no-shadow, lightweight. Keep a
-//   cap on live particles.
+//   On 'death' {position}: a burst of ~18-24 small bits (cheerful reds + whites)
+//     that shoot outward with random velocities, are pulled down by gravity, and
+//     fade + shrink out over ~0.6s.
+//   On 'coin' {position}: a quick small sparkle pop (~8 bright-yellow bits, ~0.35s).
+//
+// Implementation: ONE pooled THREE.Points backed by a single BufferGeometry with
+// per-point position / color / size / alpha attributes, drawn with a tiny additive
+// ShaderMaterial (soft round sprite, no depth-write, no shadows). A CPU-side pool of
+// particle records holds velocity + lifetime; update(dt) integrates motion, applies
+// gravity, fades/shrinks, culls dead bits, and repacks the live ones into the buffers.
+// Total live particles are hard-capped so the effect always stays cheap.
+import * as THREE from 'three';
+
+const MAX_PARTICLES = 200; // hard cap on simultaneously-live bits
+const GRAVITY = 9.0; // downward accel (units/s^2) applied to every bit
+
+// Cheerful death palette: punchy reds + a few crisp whites.
+const DEATH_COLORS = [
+  new THREE.Color('#ff3b30'), // bright red
+  new THREE.Color('#ff5a4d'), // warm coral red
+  new THREE.Color('#ff2d55'), // pink-red
+  new THREE.Color('#ffffff'), // white
+  new THREE.Color('#fff0f0'), // near-white blush
+];
+// Coin sparkle palette: bright, slightly varied yellows.
+const COIN_COLORS = [
+  new THREE.Color('#ffe14d'), // bright yellow
+  new THREE.Color('#ffd11a'), // gold
+  new THREE.Color('#fff7b0'), // pale highlight
+];
+
 export function createParticles(scene, events) {
-  return { update() {} };
+  // --- Pooled geometry: fixed-capacity attribute buffers, only `draw count`
+  // vertices are rendered each frame (we keep the live bits packed at the front).
+  const positions = new Float32Array(MAX_PARTICLES * 3);
+  const colors = new Float32Array(MAX_PARTICLES * 3);
+  const sizes = new Float32Array(MAX_PARTICLES);
+  const alphas = new Float32Array(MAX_PARTICLES);
+
+  const geometry = new THREE.BufferGeometry();
+  const posAttr = new THREE.BufferAttribute(positions, 3).setUsage(THREE.DynamicDrawUsage);
+  const colAttr = new THREE.BufferAttribute(colors, 3).setUsage(THREE.DynamicDrawUsage);
+  const sizeAttr = new THREE.BufferAttribute(sizes, 1).setUsage(THREE.DynamicDrawUsage);
+  const alphaAttr = new THREE.BufferAttribute(alphas, 1).setUsage(THREE.DynamicDrawUsage);
+  geometry.setAttribute('position', posAttr);
+  geometry.setAttribute('aColor', colAttr);
+  geometry.setAttribute('aSize', sizeAttr);
+  geometry.setAttribute('aAlpha', alphaAttr);
+  geometry.setDrawRange(0, 0);
+  // Generous bounding sphere so bits are never frustum-culled mid-flight (we move
+  // points on the CPU without recomputing bounds every frame).
+  geometry.boundingSphere = new THREE.Sphere(new THREE.Vector3(15, 4, 0), 1000);
+
+  // Soft round glow sprite so each point reads as a little ball of light, not a square.
+  const sprite = makeSpriteTexture();
+
+  // Additive ShaderMaterial: size attenuates with distance; per-point color + alpha;
+  // soft circular falloff from the sprite. Additive + no depth-write keeps the burst
+  // glowy and order-independent over the scene.
+  const material = new THREE.ShaderMaterial({
+    uniforms: {
+      uTexture: { value: sprite },
+      uScale: { value: 1.0 }, // recomputed from viewport so world `aSize` reads consistently
+    },
+    vertexShader: /* glsl */ `
+      attribute vec3 aColor;
+      attribute float aSize;
+      attribute float aAlpha;
+      uniform float uScale;
+      varying vec3 vColor;
+      varying float vAlpha;
+      void main() {
+        vColor = aColor;
+        vAlpha = aAlpha;
+        vec4 mvPosition = modelViewMatrix * vec4(position, 1.0);
+        // Perspective size attenuation: closer bits are bigger.
+        gl_PointSize = aSize * uScale / max(-mvPosition.z, 0.001);
+        gl_Position = projectionMatrix * mvPosition;
+      }
+    `,
+    fragmentShader: /* glsl */ `
+      uniform sampler2D uTexture;
+      varying vec3 vColor;
+      varying float vAlpha;
+      void main() {
+        vec4 tex = texture2D(uTexture, gl_PointCoord);
+        gl_FragColor = vec4(vColor, vAlpha) * tex;
+        if (gl_FragColor.a < 0.01) discard;
+      }
+    `,
+    transparent: true,
+    depthWrite: false,
+    depthTest: true,
+    blending: THREE.AdditiveBlending,
+  });
+
+  const points = new THREE.Points(geometry, material);
+  points.frustumCulled = false;
+  points.renderOrder = 10; // draw above the scene / AO pool
+  // Never participate in shadows.
+  points.castShadow = false;
+  points.receiveShadow = false;
+  scene.add(points);
+
+  // Keep the point-size scale in sync with the render height so bits look the same
+  // physical size regardless of viewport (gl_PointSize is in device pixels).
+  function updateScale() {
+    const h = (typeof window !== 'undefined' && window.innerHeight) || 900;
+    const dpr = (typeof window !== 'undefined' && window.devicePixelRatio)
+      ? Math.min(window.devicePixelRatio, 2)
+      : 1;
+    material.uniforms.uScale.value = h * dpr * 0.5;
+  }
+  updateScale();
+  if (typeof window !== 'undefined' && window.addEventListener) {
+    window.addEventListener('resize', updateScale);
+  }
+
+  // --- CPU pool of live particles, packed at the front of `pool` [0, count).
+  // Each slot is reused; only `count` records are alive at any time.
+  const pool = new Array(MAX_PARTICLES);
+  for (let i = 0; i < MAX_PARTICLES; i++) {
+    pool[i] = {
+      px: 0, py: 0, pz: 0,
+      vx: 0, vy: 0, vz: 0,
+      r: 1, g: 1, b: 1,
+      size: 1,
+      drag: 0, // per-second velocity damping (helps the sparkle feel "poppy")
+      gravity: GRAVITY,
+      life: 0, // seconds remaining
+      maxLife: 1,
+    };
+  }
+  let count = 0;
+
+  function spawn(x, y, z, vx, vy, vz, color, size, life, gravity, drag) {
+    if (count >= MAX_PARTICLES) return; // respect the cap; drop overflow
+    const p = pool[count++];
+    p.px = x; p.py = y; p.pz = z;
+    p.vx = vx; p.vy = vy; p.vz = vz;
+    p.r = color.r; p.g = color.g; p.b = color.b;
+    p.size = size;
+    p.life = life;
+    p.maxLife = life;
+    p.gravity = gravity;
+    p.drag = drag;
+  }
+
+  // --- DEATH BURST: ~18-24 reds/whites blasting outward in a full sphere, with a
+  // touch of extra upward bias so it pops up before raining down. Lifetime ~0.6s,
+  // fades + shrinks to nothing.
+  function emitDeath(pos) {
+    if (!pos) return;
+    const n = 18 + Math.floor(Math.random() * 7); // 18..24
+    for (let i = 0; i < n; i++) {
+      // Random direction on a sphere.
+      const theta = Math.random() * Math.PI * 2;
+      const phi = Math.acos(2 * Math.random() - 1);
+      const sinPhi = Math.sin(phi);
+      const dx = sinPhi * Math.cos(theta);
+      const dy = Math.cos(phi);
+      const dz = sinPhi * Math.sin(theta);
+      const speed = 3.2 + Math.random() * 3.8; // 3.2..7.0 units/s
+      const vx = dx * speed;
+      const vy = dy * speed + 2.6; // upward bias so the burst lifts first
+      const vz = dz * speed;
+      const color = DEATH_COLORS[(Math.random() * DEATH_COLORS.length) | 0];
+      const size = 0.16 + Math.random() * 0.16; // small bits
+      const life = 0.5 + Math.random() * 0.2; // ~0.5..0.7s, centered on 0.6
+      // Spawn slightly jittered around the death point so the origin isn't a dot.
+      spawn(
+        pos.x + (Math.random() - 0.5) * 0.2,
+        pos.y + (Math.random() - 0.5) * 0.2,
+        pos.z + (Math.random() - 0.5) * 0.2,
+        vx, vy, vz, color, size, life, GRAVITY, 0.4,
+      );
+    }
+  }
+
+  // --- COIN SPARKLE: a quick, tight pop of ~8 bright-yellow bits. Short life
+  // (~0.35s), light gravity + a bit of drag so it feels like a snappy twinkle
+  // rather than a heavy spray.
+  function emitCoin(pos) {
+    if (!pos) return;
+    const n = 8;
+    for (let i = 0; i < n; i++) {
+      const theta = Math.random() * Math.PI * 2;
+      const phi = Math.acos(2 * Math.random() - 1);
+      const sinPhi = Math.sin(phi);
+      const dx = sinPhi * Math.cos(theta);
+      const dy = Math.cos(phi);
+      const dz = sinPhi * Math.sin(theta);
+      const speed = 1.8 + Math.random() * 1.8; // 1.8..3.6 units/s — tight pop
+      const vx = dx * speed;
+      const vy = dy * speed + 1.2; // gentle upward bias
+      const vz = dz * speed;
+      const color = COIN_COLORS[(Math.random() * COIN_COLORS.length) | 0];
+      const size = 0.13 + Math.random() * 0.1; // small, twinkly
+      const life = 0.28 + Math.random() * 0.14; // ~0.28..0.42s, centered ~0.35
+      spawn(
+        pos.x + (Math.random() - 0.5) * 0.12,
+        pos.y + (Math.random() - 0.5) * 0.12,
+        pos.z + (Math.random() - 0.5) * 0.12,
+        vx, vy, vz, color, size, life, 4.5, 1.2,
+      );
+    }
+  }
+
+  // Subscribe in the constructor. Keep the unsubscribe handles for dispose().
+  const offDeath = events.on('death', ({ position }) => emitDeath(position));
+  const offCoin = events.on('coin', ({ position }) => emitCoin(position));
+
+  function update(dt) {
+    if (count === 0) {
+      geometry.setDrawRange(0, 0);
+      return;
+    }
+    // Clamp dt so a long pause / tab-switch can't fling bits across the level.
+    const step = Math.min(dt, 0.05);
+
+    let i = 0;
+    let write = 0;
+    while (i < count) {
+      const p = pool[i];
+      p.life -= step;
+      if (p.life <= 0) {
+        // Dead: drop by swapping the last live record into this slot. The records
+        // are object slots in `pool`, so swap by copying fields (no allocation).
+        count--;
+        if (i !== count) copyParticle(pool[count], p);
+        continue; // re-process the swapped-in record at the same index
+      }
+
+      // Integrate: gravity then position; apply mild exponential drag.
+      p.vy -= p.gravity * step;
+      if (p.drag > 0) {
+        const damp = Math.max(0, 1 - p.drag * step);
+        p.vx *= damp; p.vy *= damp; p.vz *= damp;
+      }
+      p.px += p.vx * step;
+      p.py += p.vy * step;
+      p.pz += p.vz * step;
+
+      // Fade + shrink over remaining life. ease = 1 at birth -> 0 at death.
+      const t = p.life / p.maxLife; // 1 -> 0
+      const ease = t * t; // ease-out so bits linger bright then snap away
+      const alpha = Math.min(1, t * 1.4); // hold near-full, fade at the tail
+
+      const o = write * 3;
+      positions[o] = p.px;
+      positions[o + 1] = p.py;
+      positions[o + 2] = p.pz;
+      colors[o] = p.r;
+      colors[o + 1] = p.g;
+      colors[o + 2] = p.b;
+      sizes[write] = p.size * (0.35 + 0.65 * ease); // shrink toward (not fully to) zero
+      alphas[write] = alpha;
+
+      write++;
+      i++;
+    }
+
+    geometry.setDrawRange(0, write);
+    if (write > 0) {
+      posAttr.needsUpdate = true;
+      colAttr.needsUpdate = true;
+      sizeAttr.needsUpdate = true;
+      alphaAttr.needsUpdate = true;
+    }
+  }
+
+  function dispose() {
+    offDeath && offDeath();
+    offCoin && offCoin();
+    scene.remove(points);
+    geometry.dispose();
+    material.dispose();
+    sprite.dispose();
+    count = 0;
+  }
+
+  return { update, dispose, points };
+}
+
+// Copy one particle record's fields into another (reused slot, no allocation).
+function copyParticle(src, dst) {
+  dst.px = src.px; dst.py = src.py; dst.pz = src.pz;
+  dst.vx = src.vx; dst.vy = src.vy; dst.vz = src.vz;
+  dst.r = src.r; dst.g = src.g; dst.b = src.b;
+  dst.size = src.size;
+  dst.drag = src.drag;
+  dst.gravity = src.gravity;
+  dst.life = src.life;
+  dst.maxLife = src.maxLife;
+}
+
+// Soft round glow sprite: bright opaque core fading to transparent at the rim, so
+// additive points read as little balls of light instead of hard squares.
+function makeSpriteTexture() {
+  const size = 64;
+  const c = document.createElement('canvas');
+  c.width = c.height = size;
+  const ctx = c.getContext('2d');
+  const g = ctx.createRadialGradient(size / 2, size / 2, 0, size / 2, size / 2, size / 2);
+  g.addColorStop(0.0, 'rgba(255,255,255,1)');
+  g.addColorStop(0.35, 'rgba(255,255,255,0.85)');
+  g.addColorStop(0.7, 'rgba(255,255,255,0.25)');
+  g.addColorStop(1.0, 'rgba(255,255,255,0)');
+  ctx.fillStyle = g;
+  ctx.fillRect(0, 0, size, size);
+  const tex = new THREE.CanvasTexture(c);
+  tex.colorSpace = THREE.SRGBColorSpace;
+  tex.minFilter = THREE.LinearFilter;
+  tex.magFilter = THREE.LinearFilter;
+  tex.needsUpdate = true;
+  return tex;
 }

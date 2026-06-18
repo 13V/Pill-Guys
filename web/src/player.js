@@ -2,7 +2,9 @@ import * as THREE from 'three';
 
 // PLAYER — the "pill guy": a kinematic capsule character. Owned by the PLAYER agent.
 //
-// export function createPlayer(scene, physics, input, spawn) -> player
+// export function createPlayer(scene, physics, input, spawn, events) -> player
+//   `events` (optional) is the src/events.js bus; we emit 'jump' the instant a
+//   jump fires and 'land' when becoming grounded after a real airborne stretch.
 //   player = {
 //     object3D,                 // THREE.Object3D added to `scene` (a pill-shaped capsule)
 //     get collider(),           // the Rapier character collider (for sensor overlap checks)
@@ -30,17 +32,27 @@ const RADIUS = 0.35;        // capsule radius (matches physics default)
 const HALF_HEIGHT = 0.4;    // half the cylindrical segment height (matches physics default)
 // Total capsule height = 2*HALF_HEIGHT + 2*RADIUS = 1.5; CapsuleGeometry length = 2*HALF_HEIGHT = 0.8.
 
-const SPEED = 7;            // horizontal move speed (units/s)
+const SPEED = 8;            // horizontal move speed (units/s) — brisk arcade run
 const GRAVITY = -26;        // downward accel (units/s^2) — matches world gravity for predictability
-const JUMP_V = 11;          // initial jump velocity (units/s)
+const JUMP_V = 12.5;        // initial jump velocity (units/s) -> apex ~3.0 units (12.5^2 / (2*26))
 const STICK_VY = -2;        // small downward bias while grounded so snap-to-ground stays engaged
 const MAX_FALL = -40;       // terminal velocity clamp so a long fall doesn't tunnel
 
+// Variable jump height: release the jump key while still rising and we kill most
+// of the remaining upward velocity once, so a tap is a short hop and a held press
+// is the full jump. This is the single biggest contributor to a snappy feel.
+const JUMP_CUT = 0.45;      // multiplier applied to vy on the release edge while rising
+
 // Forgiveness windows that make the controller feel responsive without being floaty.
 const COYOTE_TIME = 0.1;    // seconds after leaving ground during which a jump still fires
-const JUMP_BUFFER = 0.12;   // seconds a jump press is remembered before landing
+const JUMP_BUFFER = 0.1;    // seconds a jump press is remembered before landing
+const LAND_AIR_MIN = 0.12;  // min airborne time before a 'land' event is worth emitting
 
-export function createPlayer(scene, physics, input, spawn) {
+export function createPlayer(scene, physics, input, spawn, events) {
+  const emit = (type, payload) => {
+    if (events && typeof events.emit === 'function') events.emit(type, payload);
+  };
+
   const object3D = new THREE.Object3D();
   object3D.position.set(spawn.x, spawn.y, spawn.z);
   scene.add(object3D);
@@ -60,6 +72,8 @@ export function createPlayer(scene, physics, input, spawn) {
   let grounded = false;
   let coyote = 0;             // remaining coyote time
   let jumpBuffered = 0;       // remaining jump-buffer time
+  let jumpCutArmed = false;   // true after a jump fires, until we cut or peak — enables variable height
+  let airTime = 0;            // seconds spent airborne (for 'land' event gating)
   let conveyor = null;        // {x,z} world-space velocity to add this frame (set externally), or null
   let faceYaw = 0;            // current visual facing angle (smoothed toward travel dir)
 
@@ -99,7 +113,21 @@ export function createPlayer(scene, physics, input, spawn) {
       vy = JUMP_V;
       jumpBuffered = 0;
       coyote = 0;
-      grounded = false; // we're leaving the ground this frame
+      grounded = false;   // we're leaving the ground this frame
+      jumpCutArmed = true; // allow one variable-height cut on release
+      emit('jump');        // the instant a jump actually fires
+    }
+
+    // Variable jump height: if the player lets go of jump while still rising,
+    // chop the remaining upward velocity once. Holding = full arc, tap = short hop.
+    if (jumpCutArmed) {
+      if (vy <= 0) {
+        // Reached the apex without ever releasing -> nothing left to cut.
+        jumpCutArmed = false;
+      } else if (!input.jumpHeld()) {
+        vy *= JUMP_CUT;
+        jumpCutArmed = false;
+      }
     }
 
     if (vy < MAX_FALL) vy = MAX_FALL;
@@ -113,7 +141,20 @@ export function createPlayer(scene, physics, input, spawn) {
     // 4) Build desired displacement and let the controller resolve it.
     const desired = { x: hx * dt, y: vy * dt, z: hz * dt };
     const res = character.computeMove(desired);
+    const wasGrounded = grounded;
     grounded = res.grounded;
+
+    // 5) Landing: emit once when we re-touch the ground after a real airborne
+    // stretch (so micro-hops on steps/slopes don't spam the effect).
+    if (grounded && !wasGrounded) {
+      if (airTime >= LAND_AIR_MIN) emit('land', { airTime });
+      airTime = 0;
+      jumpCutArmed = false;
+    } else if (!grounded) {
+      airTime += dt;
+    } else {
+      airTime = 0;
+    }
 
     // Small downward stick keeps snap-to-ground engaged on slopes/steps.
     if (grounded && vy < 0) vy = STICK_VY;
@@ -142,6 +183,8 @@ export function createPlayer(scene, physics, input, spawn) {
     grounded = false;
     coyote = 0;
     jumpBuffered = 0;
+    jumpCutArmed = false;
+    airTime = 0;
     conveyor = null;
     object3D.position.set(spawn.x, spawn.y, spawn.z);
   }
@@ -149,7 +192,8 @@ export function createPlayer(scene, physics, input, spawn) {
   function launch(speed) {
     vy = speed;
     grounded = false;
-    coyote = 0; // launching off a spring shouldn't grant a bonus jump
+    coyote = 0;          // launching off a spring shouldn't grant a bonus jump
+    jumpCutArmed = false; // a spring launch isn't a jump — don't let a key-release cut it
   }
 
   function setConveyor(vec) {
