@@ -52,57 +52,57 @@ export default {
   deckTop: 5,
   spawn: { x: 3, y: 6.2, z: 0 },
   decks: [
-    { kind: 'platform', cx: 3,  cz: 0, w: 6, d: 6, rails: true },          // A spawn hub        x: 0..6  (spawn at z0; stays solid for a grounded start)
+    { kind: 'platform', cx: 3,  cz: 0, w: 6, d: 6, rails: true, color: 'yellow' },          // A spawn hub        x: 0..6  (spawn at z0; stays solid for a grounded start) — WARM ignition gold opens the furnace
     // A risky-only FORWARD CONVEYOR on the spawn hub's near edge (z+3, x2..6, on top of A):
     // once you commit to the near lane it boosts you at ~12u/s into the very first jump.
     // The SAFE lane (z-3) walks A. z0 spawn is untouched (lands on the solid pad).
-    { kind: 'conveyor', cx: 4, cz: 3, len: 4, w: 4 },                      //   RISKY spawn belt  x:2..6  (~12u/s lead-in to the A->C jump)
+    { kind: 'conveyor', cx: 4, cz: 3, len: 4, w: 4, color: 'red' },                      //   RISKY spawn belt  x:2..6  (~12u/s lead-in to the A->C jump) — WARM red marks the risky near lane
 
     // --- BRANCH 1 (top 5): SAFE clear lane vs RISKY spike-gauntlet lane ---
     // Reached over the first REAL jump-gap (4u). C is the B1 entry hub (w4 d6). Lanes run
     // FLUSH off C (no entry gap) — the EMPTY MIDDLE (z0 is a void over the lanes) still
     // forces a commit, and a flush entry keeps the level compact.
-    { kind: 'platform', cx: 12, cz: 0, w: 4, d: 6, rails: true },          // C B1 ENTRY hub      x:10..14  (the A->C jump lands here; w4 d6)
+    { kind: 'platform', cx: 12, cz: 0, w: 4, d: 6, rails: true, color: 'red' },          // C B1 ENTRY hub      x:10..14  (the A->C jump lands here; w4 d6) — hot red furnace hub
     // A risky-only FORWARD CONVEYOR on C's near edge (z+3, x10..14, on top of the hub) carries
     // the risky lane straight off its A->C landing into the gauntlet jump at ~12u/s. The SAFE
     // lane (z-3) walks C. Decorative saw + pipe arch still frame the hub.
-    { kind: 'conveyor', cx: 12, cz: 3, len: 4, w: 4 },                     //   RISKY C-belt (+X) x:10..14  (~12u/s lead-in to the gauntlet jump)
-    { kind: 'strip', x0: 14, x1: 22, z: -3, w: 2 },                        //   SAFE far lane     x:14..22  (flush off C; CLEAR, walked @8u/s)
+    { kind: 'conveyor', cx: 12, cz: 3, len: 4, w: 4, color: 'red' },                     //   RISKY C-belt (+X) x:10..14  (~12u/s lead-in to the gauntlet jump) — WARM risky lane
+    { kind: 'strip', x0: 14, x1: 22, z: -3, w: 2, color: 'blue' },                        //   SAFE far lane     x:14..22  (flush off C; CLEAR, walked @8u/s) — COOL blue = SAFE
     // RISKY near lane (z+3): jump the size-2 gauntlet RIGHT off the C hub (the RISK), land
     // on a long FORWARD CONVEYOR (x18..26) and ride it GROUNDED at ~12u/s into the rejoin
     // (the SHORTCUT — same pattern as Level 1). Doing the gauntlet jump first keeps the
     // whole belt a grounded boost, so RISKY clearly beats the safe lane's 8u/s walk.
-    { kind: 'conveyor', cx: 22, cz: 3, len: 8, w: 4 },                     //   RISKY belt (+X)   x:18..26  (~12u/s, ridden grounded; lands the gauntlet jump and rides into R1)
-    { kind: 'platform', cx: 24, cz: 0, w: 4, d: 6, rails: true },          // R1 B1 REJOIN hub    x:22..26  (lanes land flush; w4 d6)
+    { kind: 'conveyor', cx: 22, cz: 3, len: 8, w: 4, color: 'yellow' },                     //   RISKY belt (+X)   x:18..26  (~12u/s, ridden grounded; lands the gauntlet jump and rides into R1) — WARM yellow = risky boost
+    { kind: 'platform', cx: 24, cz: 0, w: 4, d: 6, rails: true, color: 'green' },          // R1 B1 REJOIN hub    x:22..26  (lanes land flush; w4 d6) — green cool breather between hot sections
 
     // --- spine SPLIT (x26..33): the signature CONVEYOR is now LANE-SPECIFIC (like Level 1) ---
     // Off R1 the lanes split once more: the SAFE lane (z-3) WALKS a clear strip at 8u/s, while
     // the RISKY lane (z+3) rides the FORWARD CONVEYOR at ~12u/s — a second, hazard-free Fall-
     // Guys time-save. Both rejoin on the F spring pad. The belt ENDS at ~x33.5 (just before the
     // spring-1 sensor) so the launch (cx35) is taken belt-free and arcs identically for either lane.
-    { kind: 'strip', x0: 26, x1: 33, z: -3, w: 2 },                        //   SAFE spine        x:26..33  (clear walk @8u/s)
-    { kind: 'conveyor', cx: 29.75, cz: 3, len: 7.5, w: 4 },                //   RISKY spine belt  x:26..33.5  (~12u/s, ridden grounded; ENDS ~0.6u before the spring-1 sensor so the launch stays clean)
-    { kind: 'platform', cx: 35, cz: 0, w: 4, d: 6, rails: true },          // F spring#1 REJOIN + pad  x:33..37  (both lanes land; spring twins here)
+    { kind: 'strip', x0: 26, x1: 33, z: -3, w: 2, color: 'blue' },                        //   SAFE spine        x:26..33  (clear walk @8u/s) — COOL blue = SAFE
+    { kind: 'conveyor', cx: 29.75, cz: 3, len: 7.5, w: 4, color: 'red' },                //   RISKY spine belt  x:26..33.5  (~12u/s, ridden grounded; ENDS ~0.6u before the spring-1 sensor so the launch stays clean) — WARM red = risky spine
+    { kind: 'platform', cx: 35, cz: 0, w: 4, d: 6, rails: true, color: 'yellow' },          // F spring#1 REJOIN + pad  x:33..37  (both lanes land; spring twins here) — bright yellow launch pad
 
     // --- BRANCH 2 (top 8, the RAISED section): SAFE clear vs RISKY 4u-gap SHORTCUT ---
     // The spring throws ~+5u up and ~9u forward, so the raised LANDING (H) sits ~9u ahead
     // of the spring pad and is a generous w6 d6 catch pad spanning z-3..+3. B2 lanes run
     // FLUSH off H (the void middle still forces a commit).
-    { kind: 'platform', cx: 44, cz: 0, w: 6, d: 6, top: 8, rails: true },  // H RAISED LANDING    x:41..47  (spring #1 arc lands here; w6 catch pad — stays solid for the arc)
+    { kind: 'platform', cx: 44, cz: 0, w: 6, d: 6, top: 8, rails: true, color: 'red' },  // H RAISED LANDING    x:41..47  (spring #1 arc lands here; w6 catch pad — stays solid for the arc) — hot red raised furnace core
     // A risky-only FORWARD CONVEYOR over H's near edge (z+3, x44..47, on top of the catch pad)
     // boosts the risky lane straight off its spring-1 landing toward B2; the SAFE lane (z-3)
     // walks H. The catch zone (x41..44) stays solid w6 so the spring arc always lands safely.
-    { kind: 'conveyor', cx: 44.5, cz: 3, len: 5, w: 4, top: 8 },           //   RISKY H-belt (+X) x:42..47  (~12u/s off the spring-1 landing into B2; catch zone x41..42 stays solid w6)
-    { kind: 'strip', x0: 47, x1: 56, z: -3, w: 2, top: 8 },                //   SAFE far lane     x:47..56  (flush off H; CLEAR, full length, walked @8u/s)
+    { kind: 'conveyor', cx: 44.5, cz: 3, len: 5, w: 4, top: 8, color: 'red' },           //   RISKY H-belt (+X) x:42..47  (~12u/s off the spring-1 landing into B2; catch zone x41..42 stays solid w6) — WARM risky lane
+    { kind: 'strip', x0: 47, x1: 56, z: -3, w: 2, top: 8, color: 'green' },                //   SAFE far lane     x:47..56  (flush off H; CLEAR, full length, walked @8u/s) — COOL green = SAFE
     // RISKY near lane (z+3): a short FORWARD CONVEYOR off H (x47..49) gives an early ~12u/s
     // nudge, then a solid run-up (x49..50), the 4u PIT (x50..54, the RISK), and a landing
     // strip (x54..56) before the 3u drop onto R2. The pit-jump is taken UN-boosted (off the
     // run-up, not the belt) so it lands cleanly like the safe path; the belt is the SHORTCUT.
-    { kind: 'conveyor', cx: 48, cz: 3, len: 2, w: 4, top: 8 },             //   RISKY belt (+X)   x:47..49  (~12u/s early nudge off H)
-    { kind: 'strip', x0: 49, x1: 50, z: 3, w: 2, top: 8 },                 //   RISKY run-up      x:49..50  (solid UN-boosted takeoff for the pit jump, x49.4)
-    { kind: 'strip', x0: 54, x1: 56, z: 3,  w: 2, top: 8 },                //   RISKY landing     x:54..56  (lands the 4u pit-jump; then drops 3u onto R2 like the safe path)
-    { kind: 'platform', cx: 58, cz: 0, w: 4, d: 6, rails: true },          // R2 B2 REJOIN + spring#2 pad  x:56..60  (lanes drop 3u, land flush; w4 d6)
+    { kind: 'conveyor', cx: 48, cz: 3, len: 2, w: 4, top: 8, color: 'yellow' },             //   RISKY belt (+X)   x:47..49  (~12u/s early nudge off H) — WARM yellow = risky boost
+    { kind: 'strip', x0: 49, x1: 50, z: 3, w: 2, top: 8, color: 'yellow' },                 //   RISKY run-up      x:49..50  (solid UN-boosted takeoff for the pit jump, x49.4) — WARM risky lane
+    { kind: 'strip', x0: 54, x1: 56, z: 3,  w: 2, top: 8, color: 'red' },                //   RISKY landing     x:54..56  (lands the 4u pit-jump; then drops 3u onto R2 like the safe path) — WARM red = risky landing
+    { kind: 'platform', cx: 58, cz: 0, w: 4, d: 6, rails: true, color: 'green' },          // R2 B2 REJOIN + spring#2 pad  x:56..60  (lanes drop 3u, land flush; w4 d6) — green cool rejoin before the finish launch
 
-    { kind: 'finish',   cx: 64, cz: 0, w: 4, d: 6, top: 10 },              // K finish (d6 win sensor spans z+-3)  x:62..66  (spring #2 lifts +5 & ~7u fwd)
+    { kind: 'finish',   cx: 64, cz: 0, w: 4, d: 6, top: 10, color: 'yellow' },              // K finish (d6 win sensor spans z+-3)  x:62..66  (spring #2 lifts +5 & ~7u fwd) — celebratory gold finish tower
   ],
 };

@@ -45,32 +45,30 @@ export default {
   deckTop: 5,
   spawn: { x: 3, y: 6.2, z: 0 },
   decks: [
-    { kind: 'platform', cx: 4,  cz: 0, w: 6, d: 6, rails: true },   // A start hub          x: 1..7
-    { kind: 'platform', cx: 11, cz: 0, w: 4, d: 6, rails: true },   // C SPLIT HUB 1        x: 9..13  (gap 2; lead-in, commit to a side)
+    { kind: 'platform', cx: 4,  cz: 0, w: 6, d: 6, rails: true, color: 'green' },   // A start hub          x: 1..7   — fresh cool-green foundry entrance
+    { kind: 'platform', cx: 11, cz: 0, w: 4, d: 6, rails: true, color: 'yellow' },  // C SPLIT HUB 1        x: 9..13  (gap 2; lead-in, commit to a side) — bright yellow decision point
 
     // ---- BRANCH 1 (x 13..51): the precision split. SAFE walk vs RISKY boost belt. ----
     // This is the headline shortcut: the RISKY belt is LONG and CLEAN, so the boost
     // (~12u/s) dominates the lane and clearly beats the safe lane's 8u/s walk.
-    { kind: 'strip', x0: 13, x1: 51, z: -3, w: 2 },                 // B1 SAFE  (far)       x:13..51  (clear continuous w2 walk @8u/s; flush off C)
+    { kind: 'strip', x0: 13, x1: 51, z: -3, w: 2, color: 'blue' },                 // B1 SAFE  (far)       x:13..51  (clear continuous w2 walk @8u/s; flush off C) — COOL blue = SAFE lane
     // RISKY (near, z+3): a short solid run-up, the size-4 gauntlet (JUMP the 4u void over
     // the spikes), then a LONG CLEAN FORWARD-CONVEYOR you ride GROUNDED at ~12u/s into
     // hub D — the time-save vs the safe lane's 8u/s walk (the L1 hazard-then-belt model).
-    { kind: 'strip', x0: 13, x1: 16, z: 3, w: 2 },                  // B1 RISKY run-up      x:13..16  (solid takeoff before the gauntlet)
-    { kind: 'conveyor', cx: 35.5, cz: 3, len: 31, w: 4 },           // B1 RISKY belt (+X)   x:20..51  (~12u/s; land here after the 4u gauntlet jump, ride GROUNDED ~28u into hub D)
+    { kind: 'strip', x0: 13, x1: 16, z: 3, w: 2, color: 'red' },                  // B1 RISKY run-up      x:13..16  (solid takeoff before the gauntlet) — WARM red = RISKY lane
+    { kind: 'conveyor', cx: 35.5, cz: 3, len: 31, w: 4, color: 'yellow' },           // B1 RISKY belt (+X)   x:20..51  (~12u/s; land here after the 4u gauntlet jump, ride GROUNDED ~28u into hub D) — WARM yellow = risky boost belt
 
-    { kind: 'platform', cx: 53, cz: 0, w: 4, d: 6, rails: true },   // D SAW HUB / REJOIN 1 x:51..55  (lanes land flush; decor saw + center spikeblock)
-    { kind: 'conveyor', cx: 57, cz: 0, len: 4, w: 6 },              // E conveyor (+X), w6  x:55..59  (flush off D; belt spans z-3..+3)
-
-    { kind: 'platform', cx: 61, cz: 0, w: 4, d: 6, rails: true },   // F SPLIT HUB 2        x:59..63  (flush off belt)
+    { kind: 'platform', cx: 53, cz: 0, w: 4, d: 6, rails: true, color: 'red' },   // D SAW HUB / REJOIN 1 x:51..55  (lanes land flush; decor saw + center spikeblock) — hot red saw hub
+    { kind: 'conveyor', cx: 57, cz: 0, len: 4, w: 6, color: 'green' },              // E conveyor (+X), w6  x:55..59  (flush off D; belt spans z-3..+3) — cool green spine breather
+    { kind: 'platform', cx: 61, cz: 0, w: 4, d: 6, rails: true, color: 'yellow' },   // F SPLIT HUB 2        x:59..63  (flush off belt) — bright yellow decision point
 
     // ---- BRANCH 2 (x 63..71): belt-assisted split, lethal saw IN the pit. ----
-    { kind: 'strip', x0: 63, x1: 71, z: -3, w: 2 },                 // B2 SAFE  (far)       x:63..71  (clear continuous w2 walk @8u/s; flush off F)
+    { kind: 'strip', x0: 63, x1: 71, z: -3, w: 2, color: 'green' },                 // B2 SAFE  (far)       x:63..71  (clear continuous w2 walk @8u/s; flush off F) — COOL green = SAFE lane
     // RISKY (near, z+3): a FORWARD-CONVEYOR run-up (ride it GROUNDED at ~12u/s) into a 4u
     // lethal-saw pit-JUMP that lands on hub G. The belt is the time-save; the pit + the
     // in-pit saw are the risk (a blown jump drops onto the saw).
-    { kind: 'conveyor', cx: 65, cz: 3, len: 4, w: 4 },              // B2 RISKY run-up belt x:63..67 (~12u/s; flush off F, boosts into the pit jump)
-
-    { kind: 'platform', cx: 74, cz: 0, w: 6, d: 6, rails: true },   // G REJOIN HUB 2       x:71..77  (both lanes land; 4u risky pit x67..71; center spikeblock; per-lane springs)
-    { kind: 'finish',   cx: 80, cz: 0, w: 6, d: 6, top: 10 },       // I finish             x:77..83  (spring -> finish; d6 spans lanes)
+    { kind: 'conveyor', cx: 65, cz: 3, len: 4, w: 4, color: 'red' },              // B2 RISKY run-up belt x:63..67 (~12u/s; flush off F, boosts into the pit jump) — WARM red = risky boost
+    { kind: 'platform', cx: 74, cz: 0, w: 6, d: 6, rails: true, color: 'red' },   // G REJOIN HUB 2       x:71..77  (both lanes land; 4u risky pit x67..71; center spikeblock; per-lane springs) — hot red rejoin + pit hub
+    { kind: 'finish',   cx: 80, cz: 0, w: 6, d: 6, top: 10, color: 'green' },       // I finish             x:77..83  (spring -> finish; d6 spans lanes) — distinctive cool-green victory tower
   ],
 };

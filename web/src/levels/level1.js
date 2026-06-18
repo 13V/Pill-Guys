@@ -26,16 +26,17 @@ export default {
   deckTop: 5,
   spawn: { x: 3, y: 6.2, z: 0 },
   decks: [
-    { kind: 'platform', cx: 3, cz: 0, w: 6, d: 6, rails: true },   // spawn hub          x: 0..6
-    { kind: 'conveyor', cx: 8, cz: 0, len: 8, w: 6 },              // spine conveyor (+X), spans both lanes  x: 4..12
-    { kind: 'platform', cx: 13, cz: 0, w: 6, d: 6, rails: true },  // SPLIT hub (z-3..3)  x: 10..16
+    { kind: 'platform', cx: 3, cz: 0, w: 6, d: 6, rails: true, color: 'blue' },   // spawn hub (cool start)  x: 0..6
+    { kind: 'conveyor', cx: 8, cz: 0, len: 8, w: 6, color: 'green' },             // spine conveyor (+X), spans both lanes  x: 4..12
+    { kind: 'platform', cx: 13, cz: 0, w: 6, d: 6, rails: true, color: 'yellow' },// SPLIT hub: bright decision point  x: 10..16
 
     // ---- BRANCH (x15..29): the time-save split (SAFE walk vs RISKY belt). ----
-    { kind: 'strip', x0: 15, x1: 29, z: -3, w: 2 },                // SAFE lane (far): clear walk, no boost
-    { kind: 'conveyor', cx: 21, cz: 3, len: 18, w: 4 },            // RISKY lane (near): FORWARD belt (+X) x:12..30, ride at ~12 u/s
+    // Lanes are COLOR-CODED to the risk read: SAFE = cool blue, RISKY = warm red.
+    { kind: 'strip', x0: 15, x1: 29, z: -3, w: 2, color: 'blue' },                // SAFE lane (far): clear walk, COOL = safe
+    { kind: 'conveyor', cx: 21, cz: 3, len: 18, w: 4, color: 'red' },             // RISKY lane (near): FORWARD belt (+X), WARM = risky, ride ~12 u/s
 
-    { kind: 'platform', cx: 31, cz: 0, w: 6, d: 6, rails: true },  // REJOIN hub (pipe arch + springs)  x: 28..34
-    { kind: 'finish', cx: 36, cz: 0, w: 6, d: 6, top: 10 },        // finish tower (w6 so every lane lands)  x: 33..39
+    { kind: 'platform', cx: 31, cz: 0, w: 6, d: 6, rails: true, color: 'green' }, // REJOIN hub (pipe arch + springs)  x: 28..34
+    { kind: 'finish', cx: 36, cz: 0, w: 6, d: 6, top: 10, color: 'yellow' },      // finish tower: celebratory gold  x: 33..39
   ],
   hazards: [
     // ===== ORIGINAL on-line / signature hazards =====
