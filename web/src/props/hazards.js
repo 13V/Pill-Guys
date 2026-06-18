@@ -10,14 +10,13 @@
 //                         (y -0.45..0.45). Tipped vertical with rx=90 so it
 //                         stands like a circular saw; its center is dropped
 //                         just below the deck so the lower teeth disappear into
-//                         a slot and ~2.5 cells of blade rise above the boards.
+//                         a slot and ~3 cells of blade rise above the boards.
 //   spikeroller_horizontal : 4×4×4, origin at CENTER -> origin y = DECK.top+2.
 //   spring_pad_red      : 1.5×1×1.5, base0 -> base at DECK.top.
 //   spring              : 1×2.2×1, base0   -> base at DECK.top (sits in pad).
 //   cone_red            : 0.5×0.65×0.5, base0 -> base at DECK.top.
-import * as THREE from 'three';
 import { place } from '../assets.js';
-import { DECK, TOWER, SEG } from '../layout.js';
+import { DECK, SEG } from '../layout.js';
 
 export async function build(level) {
   const top = DECK.top; // 5 — the walkway surface

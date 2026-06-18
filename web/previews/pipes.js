@@ -7,10 +7,11 @@ import { build } from '../src/props/pipes.js';
 
 const { scene, camera, controls, render } = createScene();
 
-// Frame the gateway closely for verification (does NOT affect the real scene).
+// Frame the gateway: pulled-in 3/4 view of the landmark deck (verification only;
+// does NOT affect the real scene/build).
 const cx = SEG.landmark.cx;
-const focus = new THREE.Vector3(cx, 8, 0);
-camera.position.set(cx + 16, 13, 18);
+const focus = new THREE.Vector3(cx, 7, 0);
+camera.position.set(cx + 20, 16, 22);
 camera.lookAt(focus);
 controls.target.copy(focus);
 controls.update();

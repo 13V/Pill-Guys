@@ -16,9 +16,8 @@
 //   right elbow (ry=180) origin (cx,9,+3): down→right riser, side→(cx,11,+1) -Z
 //   top span    (rx=90)  origin (cx,11,-1): runs +Z, joins (cx,11,-1)→(cx,11,+1)
 // => fully connected; bore crosses over at y=11, ~5 units clearance over deck.
-import * as THREE from 'three';
 import { place } from '../assets.js';
-import { DECK, TOWER, SEG } from '../layout.js';
+import { DECK, SEG } from '../layout.js';
 
 export async function build(level) {
   const cx = SEG.landmark.cx;     // 21
