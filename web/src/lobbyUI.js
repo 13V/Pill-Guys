@@ -364,10 +364,12 @@ export function createLobbyUI(opts = {}) {
     gap: '16px',
     padding: '18px',
     boxSizing: 'border-box',
-    background: 'linear-gradient(180deg, rgba(255,255,255,0.93) 0%, rgba(225,236,255,0.93) 100%)',
-    border: `4px solid ${C.white}`,
-    borderRadius: '28px',
-    boxShadow: '0 14px 0 rgba(16,36,63,0.22), 0 22px 50px rgba(16,36,63,0.38)',
+    background: 'linear-gradient(180deg, rgba(255,255,255,0.5) 0%, rgba(216,231,255,0.42) 100%)',
+    border: `4px solid ${rgba(C.white, 0.85)}`,
+    borderRadius: '30px',
+    boxShadow: '0 18px 44px rgba(16,36,63,0.3), inset 0 1px 0 rgba(255,255,255,0.65)',
+    backdropFilter: 'blur(16px) saturate(1.25)',
+    WebkitBackdropFilter: 'blur(16px) saturate(1.25)',
   });
 
   // --- Tabs row ---
@@ -431,6 +433,21 @@ export function createLobbyUI(opts = {}) {
     tabRow.appendChild(btn);
     tabBtns.set(t.key, { btn, count: tCount });
   }
+
+  // --- Equipped loadout strip ("what you're wearing") — sits above the tabs ---
+  const loadoutRow = document.createElement('div');
+  Object.assign(loadoutRow.style, {
+    flex: '0 0 auto',
+    display: 'flex',
+    alignItems: 'center',
+    gap: '8px',
+    padding: '8px 11px',
+    borderRadius: '18px',
+    background: rgba(C.white, 0.55),
+    border: `2px solid ${rgba(C.white, 0.85)}`,
+    boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.6)',
+  });
+  panel.appendChild(loadoutRow);
   panel.appendChild(tabRow);
 
   // --- Scrollable card grid ---
@@ -441,7 +458,7 @@ export function createLobbyUI(opts = {}) {
     overflowY: 'auto',
     overflowX: 'hidden',
     display: 'grid',
-    gridTemplateColumns: 'repeat(auto-fill, minmax(150px, 1fr))',
+    gridTemplateColumns: 'repeat(auto-fill, minmax(162px, 1fr))',
     gap: '14px',
     padding: '6px 8px 6px 2px',
     alignContent: 'start',
@@ -1070,6 +1087,41 @@ export function createLobbyUI(opts = {}) {
 
   // ============ Public API ============
 
+  // The equipped loadout strip — three chips showing the worn skin/aura/pet.
+  // Clicking a chip jumps to that tab + selects the worn item.
+  function renderLoadout(snap) {
+    loadoutRow.innerHTML = '';
+    const label = document.createElement('div');
+    label.textContent = 'WEARING';
+    Object.assign(label.style, { flex: '0 0 auto', fontSize: '12px', fontWeight: '800', letterSpacing: '1.5px', color: rgba(C.ink, 0.5) });
+    loadoutRow.appendChild(label);
+    for (const cat of ['skin', 'aura', 'pet']) {
+      const item = findItem(cat, snap.equipped && snap.equipped[cat]) || itemsOf(cat)[0];
+      if (!item) continue;
+      const rar = rarityOf(item);
+      const chip = document.createElement('button');
+      chip.type = 'button';
+      chip.className = 'pgl-btn';
+      Object.assign(chip.style, {
+        flex: '1 1 0', minWidth: '0', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '7px',
+        padding: '6px 10px', borderRadius: '13px', border: `2px solid ${rar.color}`,
+        background: `linear-gradient(180deg, ${C.white} 0%, ${lighten(rar.color, 0.78)} 100%)`,
+        boxShadow: `0 3px 0 ${rgba(darken(rar.color, 0.2), 0.4)}`,
+        fontFamily: 'inherit',
+      });
+      const ic = document.createElement('span');
+      ic.textContent = item.icon || '❔';
+      ic.style.cssText = 'font-size:22px;line-height:1;flex:0 0 auto;';
+      const nm = document.createElement('span');
+      nm.textContent = item.name;
+      Object.assign(nm.style, { fontWeight: '800', fontSize: '13px', color: C.ink, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' });
+      chip.appendChild(ic);
+      chip.appendChild(nm);
+      chip.addEventListener('click', () => { setActiveTab(cat); selectItem(item.id); });
+      loadoutRow.appendChild(chip);
+    }
+  }
+
   function refresh() {
     const snap = safeSnap();
     // Ensure a valid selection for the active tab before rendering anything that depends on it.
@@ -1077,6 +1129,7 @@ export function createLobbyUI(opts = {}) {
       selectedId = defaultSelectionFor(activeTab, snap);
     }
     renderCoins(snap.coins | 0);
+    renderLoadout(snap);
     styleTabs(snap);
     renderGrid(snap);
     renderShowcase(snap);
