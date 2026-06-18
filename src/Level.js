@@ -5,6 +5,7 @@ import {
   SpikeRoller,
   Conveyor,
   MovingPlatform,
+  Pendulum,
   Gear,
   TubeArch,
   Gate,
@@ -59,9 +60,10 @@ export class Level {
     this.scene.add(mesh);
     if (collider) this.physics.addStaticBox(c, new THREE.Vector3(w, 1, d));
 
-    // rim trim
-    const trim = new THREE.Mesh(new THREE.BoxGeometry(w + 0.3, 0.14, d + 0.3), this._mat(COLORS.trim));
-    trim.position.set(x, top + 0.07, z);
+    // Rim ledge sits just BELOW the top so the blue walking surface stays visible.
+    const trim = new THREE.Mesh(new THREE.BoxGeometry(w + 0.5, 0.3, d + 0.5), this._mat(COLORS.trim));
+    trim.position.set(x, top - 0.28, z);
+    trim.receiveShadow = true;
     this.scene.add(trim);
 
     if (pillars) {
@@ -138,51 +140,56 @@ export class Level {
     const P = this.physics;
     const S = this.scene;
 
-    // 1) Start
+    // 1) Start pad  (spans z -4.5 .. 4.5)
     this._platform({ x: 0, z: 0, w: 10, d: 9, top: 0, color: COLORS.start });
     this._add(new Gate(S, P, { x: 0, y: 0, z: -3.6, width: 7, height: 4.5 }));
 
-    // 2) Stepping stones (slight meander)
-    this._platform({ x: -2.5, z: 9.5, w: 4, d: 4 });
-    this._platform({ x: 2.5, z: 14.5, w: 4, d: 4 });
-    this._platform({ x: 0, z: 19.5, w: 4.5, d: 4.5 });
+    // 2) Stepping stones — alternating L/R, each a real ~3 m hop (gentle on-ramp)
+    this._platform({ x: -2.5, z: 9.5, w: 4, d: 4 }); // gap from start ~3.0
+    this._platform({ x: 2.5, z: 15.5, w: 4, d: 4 }); // ~3 m diagonal
+    this._platform({ x: -2.0, z: 21.5, w: 4, d: 4 }); // ~3 m diagonal
 
-    // 3) Spinning-beam arena
-    this._platform({ x: 0, z: 27, w: 11, d: 8 });
-    this._add(new SpinningBeam(S, P, { x: 0, y: 0, z: 25, length: 4.6, height: 0.9, speed: 1.7 }));
-    this._add(new SpinningBeam(S, P, { x: 0, y: 0, z: 29.5, length: 5, height: 1.4, speed: -1.3, phase: Math.PI / 2 }));
-    this._add(new TubeArch(S, P, { x: 0, y: 0.2, z: 27, radius: 4, color: 0xff5a4d }));
-    this._checkpoint(0, 27, 0);
+    // 3) Spinning-beam arena (z 25..33). First beam is the gentlest hazard.
+    this._platform({ x: 0, z: 29, w: 11, d: 8 });
+    this._add(new SpinningBeam(S, P, { x: 0, y: 0, z: 27, length: 4.6, height: 0.9, speed: 1.4 }));
+    this._add(new SpinningBeam(S, P, { x: 0, y: 0, z: 31.5, length: 5, height: 1.4, speed: -1.4, phase: Math.PI / 2 }));
+    this._add(new TubeArch(S, P, { x: 0, y: 0.2, z: 29, radius: 4, color: 0xff5a4d }));
+    this._checkpoint(0, 29, 0);
 
-    // 4) Conveyor against you. The belt's own collider is the floor, so the
-    // decorative base sits slightly lower (no z-fighting, no stray collider).
-    this._platform({ x: 0, z: 36, w: 6, d: 10, top: -0.08, color: COLORS.platformAlt, collider: false });
-    this._add(new Conveyor(S, P, { x: 0, y: 0, z: 36, w: 5.6, d: 9.6, dir: 'z', speed: -4 }));
+    // 4) Conveyor pushing back (belt collider is the floor; deco base sits lower).
+    //    Arena ends z33; belt spans z33..43.
+    this._platform({ x: 0, z: 38, w: 6, d: 10, top: -0.08, color: COLORS.platformAlt, collider: false });
+    this._add(new Conveyor(S, P, { x: 0, y: 0, z: 38, w: 5.6, d: 9.6, dir: 'z', speed: -3.5 }));
 
-    // 5) Moving platforms across the void
-    this._platform({ x: 0, z: 43.5, w: 6, d: 5 });
-    this._add(new MovingPlatform(S, P, { x: 0, y: 0, z: 48.5, w: 4.5, d: 4.5, axis: 'x', amplitude: 2.6, speed: 1.2 }));
-    this._add(new MovingPlatform(S, P, { x: 0, y: 0, z: 53.5, w: 4.5, d: 4.5, axis: 'x', amplitude: 2.6, speed: 1.45, phase: Math.PI }));
-    this._platform({ x: 0, z: 59, w: 8, d: 6 });
-    this._checkpoint(0, 59, 0);
+    // 5) Moving platforms — shuttle along Z so the FORWARD gap opens/closes.
+    this._platform({ x: 0, z: 46, w: 6, d: 5 }); // approach pad (z 43.5..48.5)
+    this._add(new MovingPlatform(S, P, { x: 0, y: 0, z: 52, w: 4.5, d: 4.5, axis: 'z', amplitude: 1.6, speed: 1.1 }));
+    this._add(new MovingPlatform(S, P, { x: 0, y: 0, z: 58.5, w: 4.5, d: 4.5, axis: 'z', amplitude: 1.6, speed: 1.1, phase: Math.PI }));
+    this._platform({ x: 0, z: 64.5, w: 8, d: 6 }); // landing (z 61.5..67.5)
+    this._checkpoint(0, 64.5, 0);
 
-    // 6) Ramp up to the high tier
-    this._platform({ x: 0, z: 63.5, w: 6, d: 3.5 });
-    this._ramp({ x: 0, z: 67, w: 6, fromTop: 0, toTop: 2, length: 4 });
-    this._platform({ x: 0, z: 71.5, w: 7, d: 4, top: 2 });
+    // 6) Pendulum bridge — vertical-arc timing for variety (z 66.5..75.5)
+    this._platform({ x: 0, z: 71, w: 5, d: 9 });
+    this._add(new Pendulum(S, P, { x: 0, y: 0, z: 68.5, armLength: 3, swing: 0.8, speed: 1.6 }));
+    this._add(new Pendulum(S, P, { x: 0, y: 0, z: 73.5, armLength: 3, swing: 0.8, speed: 1.6, phase: Math.PI }));
 
-    // 7) Spike-roller corridor
-    this._platform({ x: 0, z: 79, w: 6, d: 12, top: 2, color: COLORS.platformAlt });
-    this._add(new SpikeRoller(S, P, { x: 0, y: 2, z: 76, span: 5.2, radius: 0.6, range: 3.5, speed: 1.5 }));
-    this._add(new SpikeRoller(S, P, { x: 0, y: 2, z: 82, span: 5.2, radius: 0.6, range: 3.5, speed: 1.7, phase: Math.PI }));
-    this._add(new Gear(S, P, { x: -4, y: 3, z: 79, radius: 1.6, speed: 1.2 }));
-    this._add(new Gear(S, P, { x: 4, y: 3, z: 79, radius: 1.6, speed: -1.2 }));
-    this._checkpoint(0, 71.5, 2);
+    // 7) Ramp up to the high tier, then a wide rest pad before the climax.
+    this._ramp({ x: 0, z: 77.5, w: 6, fromTop: 0, toTop: 2, length: 4 });
+    this._platform({ x: 0, z: 82, w: 7, d: 5, top: 2 }); // rest pad (z 79.5..84.5)
+    this._checkpoint(0, 82, 2);
 
-    // 8) Finish
-    this._platform({ x: 0, z: 89, w: 10, d: 9, top: 2, color: COLORS.finish });
-    this._add(new Gate(S, P, { x: 0, y: 2, z: 92.5, width: 7, height: 4.5, color: COLORS.finish }));
-    this._buildCrown(0, 89, 2);
+    // 8) Spike-roller corridor (z 83..97). Rollers escalate; mid checkpoint.
+    this._platform({ x: 0, z: 90, w: 6, d: 14, top: 2, color: COLORS.platformAlt });
+    this._add(new SpikeRoller(S, P, { x: 0, y: 2, z: 86.5, span: 5.2, radius: 0.6, range: 3, speed: 1.4 }));
+    this._add(new SpikeRoller(S, P, { x: 0, y: 2, z: 93.5, span: 5.2, radius: 0.6, range: 3, speed: 1.8, phase: Math.PI }));
+    this._add(new Gear(S, P, { x: -4, y: 3, z: 90, radius: 1.6, speed: 1.2 }));
+    this._add(new Gear(S, P, { x: 4, y: 3, z: 90, radius: 1.6, speed: -1.2 }));
+    this._checkpoint(0, 90, 2); // relief between the two rollers
+
+    // 9) Finish podium (z 97.5..106.5)
+    this._platform({ x: 0, z: 102, w: 10, d: 9, top: 2, color: COLORS.finish });
+    this._add(new Gate(S, P, { x: 0, y: 2, z: 105.5, width: 7, height: 4.5, color: COLORS.finish }));
+    this._buildCrown(0, 102, 2);
   }
 
   _buildCrown(x, z, top) {

@@ -230,6 +230,54 @@ export class MovingPlatform {
 }
 
 // ---------------------------------------------------------------------------
+// Pendulum — a ball on an arm swinging in the Z-Y plane across the path.
+// Vertical-arc timing, distinct from the flat spinner sweep. Hit = respawn.
+// ---------------------------------------------------------------------------
+export class Pendulum {
+  constructor(scene, _physics, opts) {
+    const { x, y, z, armLength = 3, swing = 0.9, speed = 1.6, phase = 0, ballR = 0.6 } = opts;
+    this.isHazard = true;
+    this.pivot = new THREE.Vector3(x, y + armLength + 1, z);
+    this.armLength = armLength;
+    this.swing = swing;
+    this.speed = speed;
+    this.phase = phase;
+    this.ballR = ballR;
+    this.ball = new THREE.Vector3();
+
+    this.group = new THREE.Group();
+    this.group.position.copy(this.pivot);
+    const arm = new THREE.Mesh(new THREE.BoxGeometry(0.12, armLength, 0.12), mat(COLORS.pole));
+    arm.position.y = -armLength / 2;
+    this.group.add(arm);
+    const ball = new THREE.Mesh(new THREE.SphereGeometry(ballR, 16, 12), mat(COLORS.hazard, { roughness: 0.4 }));
+    ball.position.y = -armLength;
+    ball.castShadow = true;
+    this.group.add(ball);
+
+    // A small mount so the pivot reads as anchored above the track.
+    const mount = new THREE.Mesh(new THREE.BoxGeometry(0.6, 0.6, 0.6), mat(COLORS.metal));
+    mount.position.copy(this.pivot);
+    scene.add(mount);
+    scene.add(this.group);
+  }
+
+  update(_dt, elapsed) {
+    const a = Math.sin(elapsed * this.speed + this.phase) * this.swing;
+    this.group.rotation.x = a;
+    this.ball.set(
+      this.pivot.x,
+      this.pivot.y - Math.cos(a) * this.armLength,
+      this.pivot.z + Math.sin(a) * this.armLength,
+    );
+  }
+
+  hitTest(pos, pr) {
+    return this.ball.distanceTo(pos) <= this.ballR + pr;
+  }
+}
+
+// ---------------------------------------------------------------------------
 // Decorative props (no gameplay collision) — for the KayKit course look.
 // ---------------------------------------------------------------------------
 export class Gear {

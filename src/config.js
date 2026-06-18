@@ -1,12 +1,17 @@
 // Central place for gameplay tuning. Tweak freely.
 export const CONFIG = {
   // Physics
-  gravity: -26,
+  gravity: -30, // gravity while rising
+  fallGravity: -46, // heavier gravity while falling -> snappier, punchier arc
 
   // Player movement
-  moveSpeed: 8,
-  jumpSpeed: 11,
-  airControl: 0.7, // 0..1 — how much steering you keep mid-air
+  moveSpeed: 9,
+  jumpSpeed: 11.5,
+  airControl: 0.85, // 0..1 — how much steering you keep mid-air
+
+  // Forgiveness windows (seconds)
+  coyoteTime: 0.1, // can still jump shortly after walking off a ledge
+  jumpBuffer: 0.12, // pressing jump just before landing still fires on land
 
   // Player capsule (a "pill"): total height = 2*halfHeight + 2*radius
   player: {

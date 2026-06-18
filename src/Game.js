@@ -51,10 +51,10 @@ export class Game {
     );
 
     // Lighting
-    const hemi = new THREE.HemisphereLight(0xffffff, 0x6688aa, 0.9);
+    const hemi = new THREE.HemisphereLight(0xffffff, 0x6688aa, 0.65);
     this.scene.add(hemi);
 
-    const sun = new THREE.DirectionalLight(0xfff4e0, 1.7);
+    const sun = new THREE.DirectionalLight(0xfff4e0, 1.45);
     sun.position.set(30, 60, 20);
     sun.castShadow = true;
     sun.shadow.mapSize.set(2048, 2048);
@@ -121,6 +121,17 @@ export class Game {
 
   _frame() {
     const dt = Math.min(this.clock.getDelta(), 1 / 30);
+
+    // Free-camera mode (debug / scripted screenshots): obstacles keep animating
+    // but the camera is positioned manually and gameplay is paused.
+    if (this._freeCam) {
+      this.level?.update(dt, this.clock.elapsedTime);
+      const c = this._freeCam;
+      this.camera.position.set(c.px, c.py, c.pz);
+      this.camera.lookAt(c.lx, c.ly, c.lz);
+      this.renderer.render(this.scene, this.camera);
+      return;
+    }
 
     if (this.state === STATE.PLAYING) {
       // Animate/queue moving obstacles first, then read what's underfoot.

@@ -45,6 +45,8 @@ export class Player {
     this.vVel = 0; // vertical velocity
     this.grounded = false;
     this._wasJump = false;
+    this._coyote = 0; // time left to still jump after leaving the ground
+    this._jumpBuffer = 0; // time left for a buffered jump press to fire
     this._targetYaw = 0;
     this._tmp = new THREE.Vector3();
   }
@@ -114,13 +116,21 @@ export class Player {
     this.hVel.x += (target.x - this.hVel.x) * t;
     this.hVel.z += (target.z - this.hVel.z) * t;
 
-    // Vertical: gravity + jump (edge-triggered so holding doesn't auto-bounce).
-    this.vVel += CONFIG.gravity * dt;
-    if (input.jump && !this._wasJump && this.grounded) {
+    // Forgiveness timers: coyote (from last grounded frame) + jump buffer (from press).
+    this._coyote = this.grounded ? CONFIG.coyoteTime : Math.max(0, this._coyote - dt);
+    const jumpPressed = input.jump && !this._wasJump; // edge: ignores held keys
+    if (jumpPressed) this._jumpBuffer = CONFIG.jumpBuffer;
+    else this._jumpBuffer = Math.max(0, this._jumpBuffer - dt);
+    this._wasJump = input.jump;
+
+    // Vertical: fall-heavy gravity for a snappy arc, then resolve a (buffered) jump.
+    this.vVel += (this.vVel > 0 ? CONFIG.gravity : CONFIG.fallGravity) * dt;
+    if (this._jumpBuffer > 0 && this._coyote > 0) {
       this.vVel = CONFIG.jumpSpeed;
       this.grounded = false;
+      this._coyote = 0; // consume so one ledge gives exactly one jump
+      this._jumpBuffer = 0;
     }
-    this._wasJump = input.jump;
 
     // Conveyor push / moving-platform carry is added on top of input (no smoothing).
     const svx = surfaceVel ? surfaceVel.x : 0;

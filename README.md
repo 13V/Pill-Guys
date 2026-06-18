@@ -26,6 +26,16 @@ so adding or rearranging sections is straightforward.
 > Fresh-start foundation: a polished, playable prototype you can build a full
 > game on. Not a finished product (yet).
 
+## Screenshots
+
+![The full course](docs/screenshots/hero.png)
+
+| Pendulum bridge | Spike-roller corridor | The crowned finish |
+| --- | --- | --- |
+| ![Pendulums](docs/screenshots/pendulums.png) | ![Spike rollers](docs/screenshots/spike-rollers.png) | ![Finish](docs/screenshots/finish.png) |
+
+_Rendered with the built-in primitive placeholders — drop in the KayKit models for the final art._
+
 ## Tech
 
 - **[Three.js](https://threejs.org/)** — 3D rendering

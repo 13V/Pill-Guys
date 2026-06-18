@@ -6,6 +6,10 @@ token/node_modules/
 dist/
 token/dist/
 
+# Screenshot output (committed showcase shots live in docs/screenshots/)
+shots/
+shots-before/
+
 # Solana — NEVER commit keypairs or secrets
 token/keypairs/
 *-keypair.json
