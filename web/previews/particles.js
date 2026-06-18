@@ -28,6 +28,10 @@ scene.add(platform);
 const events = createEvents();
 const fx = createParticles(scene, events);
 
+// Expose for headless diagnostics / debugging in the browser console.
+window.__fx = fx;
+window.__scene = scene;
+
 // Fire both bursts and step the sim so they're mid-flight for the still.
 events.emit('death', { position: { x: 0, y: 1.5, z: 0 } });
 events.emit('coin', { position: { x: 3, y: 1.5, z: 0 } });
@@ -37,15 +41,16 @@ render();
 render();
 window.__ready = true;
 
-// Live loop: keep animating, and periodically re-fire so the preview never goes
-// empty when viewed interactively.
-let acc = 0;
+// Live loop: keep animating and re-fire often enough that there are ALWAYS bits
+// mid-flight, so the headless screenshot (taken ~1.2s after __ready) can't land
+// on an empty frame. Death lasts ~0.6s; firing every ~0.35s keeps overlap.
+let acc = 0.35; // fire immediately on the first loop tick too
 let last = performance.now();
 function loop(now) {
   const dt = Math.min((now - last) / 1000, 0.05);
   last = now;
   acc += dt;
-  if (acc > 1.6) {
+  if (acc >= 0.35) {
     acc = 0;
     events.emit('death', { position: { x: 0, y: 1.5, z: 0 } });
     events.emit('coin', { position: { x: 3, y: 1.5, z: 0 } });
