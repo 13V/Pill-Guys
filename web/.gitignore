@@ -3,6 +3,13 @@ dist/
 .vite/
 *.log
 
+# transient agent scratch scripts (the kept tools are render/integration_test/leveltest/traverse/shot)
+_*.mjs
+*-driver.mjs
+*scratch*.mjs
+qa_*.mjs
+trace[0-9]*.mjs
+
 # scratch render outputs from the agents (keep the deliverable shots)
 /*.png
 !/preview.png
