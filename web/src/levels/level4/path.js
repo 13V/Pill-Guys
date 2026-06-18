@@ -5,9 +5,10 @@
 //
 // DIFFICULTY (audit fix): L4 must clearly out-challenge L3. Where L3's risky lanes
 // each carry ONE on-the-line threat, L4's risky lanes stack TWO real on-line
-// challenges apiece, on tighter w2 bridges and over WIDER (4-5u) gaps than L3's 4u:
-//   - BRANCH 1 RISKY: a size-4 SPIKE GAUNTLET *and* a 4u precision-bridge JUMP-GAP.
-//   - BRANCH 2 RISKY: a 5u belt-assisted JUMP-GAP with a LETHAL saw IN the pit
+// challenges apiece, on tighter w2 bridges and over WIDER (4-4.5u) gaps than L3's 4u:
+//   - BRANCH 1 RISKY: a size-4 SPIKE GAUNTLET *and* a 4u precision-bridge JUMP-GAP
+//     off a w2 mid-landing (two back-to-back leaps; no breather).
+//   - BRANCH 2 RISKY: a 4.5u belt-assisted JUMP-GAP with a LETHAL saw IN the pit
 //     (the same leap that clears the gap clears the saw — the audit's required
 //     conversion of the old off-line cz+4.6 flank into a real on-line risk).
 // Plus a lethal center spikeblock on EACH rejoin hub (D, G) — like L3 — so you
@@ -19,12 +20,12 @@
 // sections each fork into a SAFE lane (z=-3, far) and a RISKY/REWARD lane (z=+3,
 // near), splitting + rejoining at shared w6 hubs; the middle (z -2..+2) is left
 // EMPTY so you must commit to a side. Both lanes of every split reach the finish.
-//   - BRANCH 1 (x 23..37): the w2 PRECISION BRIDGE, split. SAFE = clear continuous
-//     w2 walk (1 coin). RISKY = run-up, size-4 spike gauntlet, a mid landing, then
-//     a 4u jump-gap onto the bridge end (3 coins).
-//   - BRANCH 2 (x 62..75): belt-assisted split off hub F. SAFE = clear continuous
-//     w2 walk (1 coin). RISKY = a 5u belt-assisted jump-gap with a lethal saw in the
-//     pit, then a landing (3 coins).
+//   - BRANCH 1 (x 23..38): the w2 PRECISION BRIDGE, split. SAFE = clear continuous
+//     w2 walk (1 coin). RISKY = run-up, size-4 spike gauntlet, a w2 mid-landing,
+//     then a 4u jump-gap onto the bridge end (3 coins).
+//   - BRANCH 2 (x 60..69): belt-assisted split off hub F. SAFE = clear continuous
+//     w2 walk (1 coin). RISKY = a 4.5u belt-assisted jump-gap with a lethal saw in
+//     the pit, landing on the rejoin hub (3 coins).
 //
 // IMPORTANT (builder): a `strip` only gets a 2u-wide (or 4u for w4) physics collider
 // regardless of visual width, so SHARED spine that must be walkable across z-3..+3
@@ -44,23 +45,22 @@ export default {
 
     { kind: 'platform', cx: 18, cz: 0, w: 6, d: 6, rails: true },   // C SPLIT HUB 1        x:15..21  (gap 1)
 
-    // ---- BRANCH 1 (x 23..37): the w2 PRECISION BRIDGE, split. 2u hop onto a lane. ----
-    { kind: 'strip', x0: 23, x1: 37, z: -3, w: 2 },                 // B1 SAFE  (far)       x:23..37  (clear continuous w2 walk)
+    // ---- BRANCH 1 (x 23..38): the w2 PRECISION BRIDGE, split. 2u hop onto a lane. ----
+    { kind: 'strip', x0: 23, x1: 38, z: -3, w: 2 },                 // B1 SAFE  (far)       x:23..38  (clear continuous w2 walk)
     { kind: 'strip', x0: 23, x1: 27, z:  3, w: 2 },                 // B1 RISKY run-up      x:23..27  (land before the gauntlet)
     { kind: 'strip', x0: 31, x1: 34, z:  3, w: 2 },                 // B1 RISKY mid landing x:31..34  (gauntlet cx29 spans x27..31; land here)
     { kind: 'strip', x0: 38, x1: 40, z:  3, w: 2 },                 // B1 RISKY bridge end  x:38..40  (after a 4u jump-gap x34..38)
 
     { kind: 'platform', cx: 43, cz: 0, w: 6, d: 6, rails: true },   // D SAW HUB / REJOIN 1 x:40..46  (rejoin 1; decor saw + center spikeblock)
-    { kind: 'conveyor', cx: 51, cz: 0, len: 8, w: 6 },              // E conveyor (+X), w6  x:47..55  (gap 1; belt spans z-3..+3)
+    { kind: 'conveyor', cx: 50, cz: 0, len: 8, w: 6 },              // E conveyor (+X), w6  x:46..54  (gap 0; belt spans z-3..+3)
 
-    { kind: 'platform', cx: 58, cz: 0, w: 6, d: 6, rails: true },   // F SPLIT HUB 2        x:55..61  (flush off belt; belt-assisted)
+    { kind: 'platform', cx: 57, cz: 0, w: 6, d: 6, rails: true },   // F SPLIT HUB 2        x:54..60  (flush off belt; belt-assisted)
 
-    // ---- BRANCH 2 (x 62..75): belt-assisted split, lethal saw IN the pit. 1u hop. ----
-    { kind: 'strip', x0: 62, x1: 75, z: -3, w: 2 },                 // B2 SAFE  (far)       x:62..75  (clear continuous w2 walk)
-    { kind: 'strip', x0: 62, x1: 67, z:  3, w: 2 },                 // B2 RISKY run-up      x:62..67  (belt-assisted run-up)
-    { kind: 'strip', x0: 72, x1: 75, z:  3, w: 2 },                 // B2 RISKY landing     x:72..75  (after a 5u GAP x67..72; lethal saw in pit cx69.5)
+    // ---- BRANCH 2 (x 61..69): belt-assisted split, lethal saw IN the pit. 1u hop. ----
+    { kind: 'strip', x0: 60, x1: 69, z: -3, w: 2 },                 // B2 SAFE  (far)       x:60..69  (clear continuous w2 walk)
+    { kind: 'strip', x0: 60, x1: 64.5, z: 3, w: 2 },                // B2 RISKY run-up      x:60..64.5 (belt-assisted run-up; flush off hub F)
 
-    { kind: 'platform', cx: 78, cz: 0, w: 6, d: 6, rails: true },   // G REJOIN HUB 2       x:75..81  (both lanes land; center spikeblock; per-lane springs)
-    { kind: 'finish',   cx: 86, cz: 0, w: 6, d: 6, top: 10 },       // I finish             x:83..89  (spring -> finish; d6 spans lanes)
+    { kind: 'platform', cx: 72, cz: 0, w: 6, d: 6, rails: true },   // G REJOIN HUB 2       x:69..75  (both lanes land; 4.5u risky gap x64.5..69; center spikeblock; per-lane springs)
+    { kind: 'finish',   cx: 80, cz: 0, w: 6, d: 6, top: 10 },       // I finish             x:77..83  (spring -> finish; d6 spans lanes)
   ],
 };

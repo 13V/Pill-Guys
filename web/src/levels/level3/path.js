@@ -29,37 +29,37 @@
 // conveyor-fed B2 jump-gap.
 //
 // Deck X-spans & gaps (all gaps <=4u):
-//   A 0..6 | gap 3 | B 9..13 | gap 3 | C(B1 entry) 16..20
-//   gap 2 onto lanes 22..30 (top5) | R1 30..36 (flush)
-//   gap 2 | conveyor 38..44 | gap 3 (belt-assisted) onto F spring pad 47..51
-//   spring#1 -> H raised entry 53..57 (top8, +3)
-//   gap 2 onto B2 lanes 59..67 (top8; risky = 4u pit 61..65, land 65..67) | R2 67..71 (top5; spring#2)
-//   gap 2 | K finish 73..77 (top10).   Total length ~62u.
+//   A spawn 0..6 | gap 4 (REAL early jump) | C(B1 entry) 10..14
+//   gap 2 onto B1 lanes 16..24 (top5; risky gauntlet @20) | R1 24..28 (flush)
+//   conveyor 28..34 (flush off R1) | gap 2 (belt-assisted) onto F spring pad 36..40
+//   spring#1 -> H raised entry 41..45 (top8, +3 over a 1u gap)
+//   gap 2 onto B2 lanes 47..55 (top8; risky = 4u pit 49..53, land 53..55) | R2 55..59 (top5; spring#2)
+//   gap 2 | K finish 61..65 (top10).   Total length ~65u (was ~90u).
 export default {
   name: 'Furnace Gaps',
   deckTop: 5,
   spawn: { x: 3, y: 6.2, z: 0 },
   decks: [
     { kind: 'platform', cx: 3,  cz: 0, w: 6, d: 6, rails: true },          // A spawn hub        x: 0..6
-    { kind: 'platform', cx: 11, cz: 0, w: 4, d: 6 },                       // B real jump-gap    x: 9..13  (gap 1 = 3u; d6 so side lanes can cross)
 
     // --- BRANCH 1 (top 5): SAFE clear lane vs RISKY spike-gauntlet lane ---
-    { kind: 'platform', cx: 18, cz: 0, w: 4, d: 6, rails: true },          // C B1 ENTRY hub      x:16..20  (gap 2 = 3u; decorative saw menace)
-    { kind: 'strip', x0: 22, x1: 30, z: -3, w: 2 },                        //   SAFE far lane     x:22..30  (gap 2 onto lane; CLEAR)
-    { kind: 'strip', x0: 22, x1: 30, z: 3,  w: 2 },                        //   RISKY near lane   x:22..30  (gauntlet @26: spikes 24..28, land 22..24 & 28..30)
-    { kind: 'platform', cx: 33, cz: 0, w: 6, d: 6, rails: true },          // R1 B1 REJOIN hub    x:30..36  (lanes land flush)
+    // Reached over the first REAL jump-gap (4u). C is the B1 entry hub (w4 d6).
+    { kind: 'platform', cx: 12, cz: 0, w: 4, d: 6, rails: true },          // C B1 ENTRY hub      x:10..14  (gap 1 = 4u REAL jump; decorative saw menace)
+    { kind: 'strip', x0: 16, x1: 24, z: -3, w: 2 },                        //   SAFE far lane     x:16..24  (gap 2 onto lane; CLEAR)
+    { kind: 'strip', x0: 16, x1: 24, z: 3,  w: 2 },                        //   RISKY near lane   x:16..24  (gauntlet @20: spikes 18..22, land 16..18 & 22..24)
+    { kind: 'platform', cx: 26, cz: 0, w: 4, d: 6, rails: true },          // R1 B1 REJOIN hub    x:24..28  (lanes land flush; w4 d6)
 
-    // --- spine: conveyor (+X) straight into a jump-gap, then spring #1 up ---
-    { kind: 'conveyor', cx: 41, cz: 0, len: 6, w: 6 },                     // E conveyor +X       x:38..44  (gap 2; w6 keeps z+-3 walkable)
-    { kind: 'platform', cx: 49, cz: 0, w: 4, d: 6, rails: true },          // F spring#1 pad      x:47..51  (gap 3, belt-assisted)
+    // --- spine: CONVEYOR (+X) flush off R1, pushing you INTO a jump-gap, then spring #1 ---
+    { kind: 'conveyor', cx: 31, cz: 0, len: 6, w: 6 },                     // E conveyor +X       x:28..34  (flush off R1; belt push helps the next jump)
+    { kind: 'platform', cx: 38, cz: 0, w: 4, d: 6, rails: true },          // F spring#1 pad      x:36..40  (gap 2 = belt-assisted jump off the conveyor)
 
     // --- BRANCH 2 (top 8, the RAISED section): SAFE clear vs RISKY 4u-gap SHORTCUT ---
-    { kind: 'platform', cx: 55, cz: 0, w: 4, d: 6, top: 8, rails: true },  // H RAISED B2 ENTRY   x:53..57  (spring lifts +3 & fwd)
-    { kind: 'strip', x0: 59, x1: 67, z: -3, w: 2, top: 8 },                //   SAFE far lane     x:59..67  (gap 2 onto lane; CLEAR, full length)
-    { kind: 'strip', x0: 59, x1: 61, z: 3,  w: 2, top: 8 },                //   RISKY near lane A  x:59..61  (gap 2 onto lane)
-    { kind: 'strip', x0: 65, x1: 67, z: 3,  w: 2, top: 8 },                //   RISKY near lane B  x:65..67  (landing after the 4u pit 61..65)
-    { kind: 'platform', cx: 69, cz: 0, w: 6, d: 6, rails: true },          // R2 B2 REJOIN + spring#2 pad  x:66..72  (lanes drop 3u, land flush)
+    { kind: 'platform', cx: 43, cz: 0, w: 4, d: 6, top: 8, rails: true },  // H RAISED B2 ENTRY   x:41..45  (spring #1 lifts +3 & fwd over a 1u gap)
+    { kind: 'strip', x0: 47, x1: 55, z: -3, w: 2, top: 8 },                //   SAFE far lane     x:47..55  (gap 2 onto lane; CLEAR, full length)
+    { kind: 'strip', x0: 47, x1: 49, z: 3,  w: 2, top: 8 },                //   RISKY near lane A  x:47..49  (gap 2 onto lane)
+    { kind: 'strip', x0: 53, x1: 55, z: 3,  w: 2, top: 8 },                //   RISKY near lane B  x:53..55  (landing after the 4u pit 49..53)
+    { kind: 'platform', cx: 57, cz: 0, w: 4, d: 6, rails: true },          // R2 B2 REJOIN + spring#2 pad  x:55..59  (lanes drop 3u, land flush; w4 d6)
 
-    { kind: 'finish',   cx: 75, cz: 0, w: 4, d: 6, top: 10 },              // K finish (d6 win sensor spans z+-3)  x:73..77  (spring +5, +2 fwd)
+    { kind: 'finish',   cx: 63, cz: 0, w: 4, d: 6, top: 10 },              // K finish (d6 win sensor spans z+-3)  x:61..65  (spring +5, +4 fwd)
   ],
 };
