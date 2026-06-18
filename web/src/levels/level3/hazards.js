@@ -36,9 +36,9 @@ export const hazards = [
   { kind: 'cone', cx: 19, cz: 3 },                           // warn the risky lane (belt side)
 
   // BRANCH 2 risky lane (z+3, top8): DECORATIVE sawblade in the 4u pit (a pit under a
-  // real gap — the jump is the challenge; NO lethal flag => no death sensor).
-  { kind: 'sawblade', cx: 52, cz: 3, top: 8 },               // decorative menace in the pit 50..54 (side lane only)
-  { kind: 'cone', cx: 49, cz: 3, top: 8 },                   // warn the risky lane (gap edge)
+  // real gap — the boosted jump is the challenge; NO lethal flag => no death sensor).
+  { kind: 'sawblade', cx: 52, cz: 3, top: 8 },               // decorative menace in the pit x50..54 (side lane only)
+  { kind: 'cone', cx: 49.5, cz: 3, top: 8 },                 // warn the risky lane (pit edge)
   { kind: 'cone', cx: 55, cz: 3, top: 8 },                   // warn the risky lane (landing)
 ];
 export const springs = [

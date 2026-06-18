@@ -66,11 +66,13 @@ export default {
     // FLUSH off H (the void middle still forces a commit).
     { kind: 'platform', cx: 44, cz: 0, w: 6, d: 6, top: 8, rails: true },  // H RAISED LANDING    x:41..47  (spring #1 arc lands here; w6 catch pad)
     { kind: 'strip', x0: 47, x1: 56, z: -3, w: 2, top: 8 },                //   SAFE far lane     x:47..56  (flush off H; CLEAR, full length, walked @8u/s)
-    // RISKY near lane (z+3): ride a long FORWARD CONVEYOR run-up (x47..52, top8) at ~12u/s,
-    // then a boosted leap over the 4u PIT (x52..56, the RISK) that drops you straight onto
-    // the R2 rejoin (top5). The belt is the SHORTCUT; the pit (+ decorative saw) is the risk.
-    { kind: 'conveyor', cx: 49.5, cz: 3, len: 5, w: 4, top: 8 },           //   RISKY belt (+X)   x:47..52  (~12u/s run-up, ridden grounded off H)
-    // (pit x52..56 = a 4u gap; the boosted jump clears it and lands on R2 below)
+    // RISKY near lane (z+3): a short FORWARD CONVEYOR off H (x47..49) gives an early ~12u/s
+    // nudge, then a solid run-up (x49..50), the 4u PIT (x50..54, the RISK), and a landing
+    // strip (x54..56) before the 3u drop onto R2. The pit-jump is taken UN-boosted (off the
+    // run-up, not the belt) so it lands cleanly like the safe path; the belt is the SHORTCUT.
+    { kind: 'conveyor', cx: 48, cz: 3, len: 2, w: 4, top: 8 },             //   RISKY belt (+X)   x:47..49  (~12u/s early nudge off H)
+    { kind: 'strip', x0: 49, x1: 50, z: 3, w: 2, top: 8 },                 //   RISKY run-up      x:49..50  (solid UN-boosted takeoff for the pit jump, x49.4)
+    { kind: 'strip', x0: 54, x1: 56, z: 3,  w: 2, top: 8 },                //   RISKY landing     x:54..56  (lands the 4u pit-jump; then drops 3u onto R2 like the safe path)
     { kind: 'platform', cx: 58, cz: 0, w: 4, d: 6, rails: true },          // R2 B2 REJOIN + spring#2 pad  x:56..60  (lanes drop 3u, land flush; w4 d6)
 
     { kind: 'finish',   cx: 64, cz: 0, w: 4, d: 6, top: 10 },              // K finish (d6 win sensor spans z+-3)  x:62..66  (spring #2 lifts +5 & ~7u fwd)

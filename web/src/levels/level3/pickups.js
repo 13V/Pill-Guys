@@ -23,11 +23,11 @@ export const coins = [
   { x: 29, y: 6.4, z: 0 },     // riding the conveyor E
   { x: 38, y: 7.6, z: 0 },     // rising off spring #1 (arc up to the raised section)
 
-  // BRANCH 2 rewards (top 8, raised): SAFE 1 / RISKY 3
+  // BRANCH 2 rewards (raised): SAFE 1 / RISKY 3
   { x: 52, y: 9.4, z: -3 },    // SAFE far lane — 1 normal coin
-  { x: 49, y: 9.8, z: 3 },     // RISKY near lane — coin before the pit
-  { x: 52, y: 10.2, z: 3 },    // RISKY near lane — coin in the jump arc over the pit
-  { x: 55, y: 9.8, z: 3 },     // RISKY near lane — coin after the gap (3 = 3x reward)
+  { x: 49, y: 9.8, z: 3 },     // RISKY near lane — coin riding the boost belt (top8)
+  { x: 53, y: 10.0, z: 3 },    // RISKY near lane — coin in the jump arc over the pit
+  { x: 57, y: 6.8, z: 3 },     // RISKY near lane — coin on the R2 landing (top5; 3 = 3x reward)
 
   { x: 64, y: 11.4, z: 0 },    // atop the finish tower K (rising off spring #2)
 ];
