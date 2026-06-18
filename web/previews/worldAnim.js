@@ -9,11 +9,17 @@ import * as THREE from 'three';
 
 const { scene, camera, renderer } = createScene();
 
-// Frame the hazard/conveyor cluster broadside so both the saw (landmark deck,
-// x≈18) and the conveyor (x≈10) are clearly in view.
-camera.position.set(33, 18, 29);
-const lookAt = new THREE.Vector3(14, 5, 0);
-camera.lookAt(lookAt);
+// Camera presets: the default broadside frames both the saw (x≈18) and the
+// conveyor (x≈10); ?cam=saw is a tight head-on close-up of the sawblade so the
+// tooth angular position is unmistakable for a rest-vs-spun comparison.
+const cam = new URLSearchParams(location.search).get('cam') || 'wide';
+if (cam === 'saw') {
+  camera.position.set(18, 7.5, 16);
+  camera.lookAt(new THREE.Vector3(18, 6.5, 0));
+} else {
+  camera.position.set(33, 18, 29);
+  camera.lookAt(new THREE.Vector3(14, 5, 0));
+}
 
 const level = await buildVisualLevel(scene);
 const anim = createWorldAnim(level);
