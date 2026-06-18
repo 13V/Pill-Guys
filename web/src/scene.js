@@ -16,7 +16,7 @@ export function createScene() {
   renderer.shadowMap.type = THREE.PCFSoftShadowMap;
   renderer.outputColorSpace = THREE.SRGBColorSpace;
   renderer.toneMapping = THREE.ACESFilmicToneMapping;
-  renderer.toneMappingExposure = 1.1;
+  renderer.toneMappingExposure = 1.18;
   document.body.appendChild(renderer.domElement);
 
   const scene = new THREE.Scene();
@@ -37,7 +37,7 @@ export function createScene() {
   pmrem.compileEquirectangularShader();
   const envRT = pmrem.fromScene(new RoomEnvironment(), 0.04);
   scene.environment = envRT.texture;
-  scene.environmentIntensity = 0.85;
+  scene.environmentIntensity = 0.95;
 
   // --- Camera: 3/4 high angle, looking at the strip broadside near (15,4,0)
   // so the level reads left -> right across the frame.
@@ -58,18 +58,19 @@ export function createScene() {
   // --- KEY light: warm, soft, from upper-front-left. Casts the main soft
   // contact shadow that grounds the level. Shadow camera is sized to cover
   // roughly x:[-5,32] z:[-8,8] y:[0,12] of the level with a little margin.
-  const key = new THREE.DirectionalLight(0xfff1de, 3.1);
-  key.position.set(-10, 20, 17);
+  const key = new THREE.DirectionalLight(0xfff1de, 3.3);
+  key.position.set(-13, 17, 15);
   key.target.position.copy(target);
   key.castShadow = true;
   key.shadow.mapSize.set(4096, 4096);
   const s = key.shadow.camera;
-  s.left = -24; s.right = 46; s.top = 32; s.bottom = -28;
+  s.left = -26; s.right = 48; s.top = 34; s.bottom = -30;
   s.near = 1; s.far = 130;
   s.updateProjectionMatrix();
-  // Soft + artifact-free: a touch of blur radius with PCFSoft, tuned biases so
-  // the broad flat platform tops don't shadow-acne or peter-pan off the ground.
-  key.shadow.radius = 7;
+  // Soft + artifact-free: a moderate blur radius with PCFSoft keeps the contact
+  // edge defined (not dissolved); tuned biases so the broad flat platform tops
+  // don't shadow-acne or peter-pan off the ground.
+  key.shadow.radius = 4;
   key.shadow.blurSamples = 25;
   key.shadow.bias = -0.0003;
   key.shadow.normalBias = 0.035;
@@ -78,7 +79,7 @@ export function createScene() {
 
   // --- FILL light: cooler, from the opposite (front-right) side, no shadow.
   // Lifts the shaded faces and keeps the toy-plastic look from going muddy.
-  const fill = new THREE.DirectionalLight(0xdce8ff, 0.85);
+  const fill = new THREE.DirectionalLight(0xdce8ff, 0.7);
   fill.position.set(34, 14, 22);
   fill.target.position.copy(target);
   scene.add(fill);
@@ -94,14 +95,21 @@ export function createScene() {
 
   // --- Sky/ground hemisphere + a whisper of ambient round out the bounce so
   // nothing reads pure black; kept low so the directional key still dominates.
-  scene.add(new THREE.HemisphereLight(0xeaf2ff, 0x9aa6b4, 0.45));
-  scene.add(new THREE.AmbientLight(0xffffff, 0.12));
+  scene.add(new THREE.HemisphereLight(0xeaf2ff, 0x9aa6b4, 0.3));
+  scene.add(new THREE.AmbientLight(0xffffff, 0.08));
 
   // --- Ground: a large soft, light plane that receives the contact shadows.
   // Slightly cooler than the backdrop so the strip's shadow reads clearly.
   const ground = new THREE.Mesh(
     new THREE.PlaneGeometry(800, 800),
-    new THREE.MeshStandardMaterial({ color: 0xdfe6ee, roughness: 0.92, metalness: 0 })
+    new THREE.MeshStandardMaterial({
+      color: 0xd4dbe4,
+      roughness: 0.96,
+      metalness: 0,
+      // Keep the floor matte and unaffected by the bright env so cast shadows
+      // read with good contrast instead of being lifted to near-white.
+      envMapIntensity: 0.25,
+    })
   );
   ground.rotation.x = -Math.PI / 2;
   ground.position.y = -0.01; // just under y=0 so coplanar pieces don't z-fight
@@ -113,18 +121,18 @@ export function createScene() {
   // the cast shadow is soft. Drawn just above the ground, additively darkened.
   const aoTex = makeRadialAlpha();
   const aoPool = new THREE.Mesh(
-    new THREE.PlaneGeometry(54, 26),
+    new THREE.PlaneGeometry(46, 24),
     new THREE.MeshBasicMaterial({
       map: aoTex,
       transparent: true,
-      opacity: 0.22,
-      color: 0x73808f,
+      opacity: 0.28,
+      color: 0x6a7686,
       depthWrite: false,
       blending: THREE.NormalBlending,
     })
   );
   aoPool.rotation.x = -Math.PI / 2;
-  aoPool.position.set(12, 0.004, 0.5);
+  aoPool.position.set(11, 0.004, 0.5);
   aoPool.renderOrder = 1;
   scene.add(aoPool);
 
