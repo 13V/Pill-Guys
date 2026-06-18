@@ -8,4 +8,5 @@ dist/
 !/preview.png
 !/gameplay.png
 !/deathburst.png
+!/level*.png
 /previews/*.png
