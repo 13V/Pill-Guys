@@ -13,6 +13,7 @@ import { createParticles } from './effects/particles.js';
 import { createWorldAnim } from './effects/worldAnim.js';
 import { createCoinJuice } from './effects/coins.js';
 import { createRagdoll } from './effects/ragdoll.js';
+import { createTransition } from './effects/transition.js';
 
 // Playable entry. Levels are data (src/levels/*); one builder makes visuals +
 // physics. Progression advances by reloading with ?level=N (fresh scene/world),
@@ -41,11 +42,14 @@ async function start() {
   const worldAnim = createWorldAnim(built.group);
   const coinJuice = createCoinJuice(world, events);
   const ragdoll = createRagdoll(scene, physics);
+  const transition = createTransition();
   if (audio && audio.resume) audio.resume();
 
   // Death -> ragdoll. interactions emits 'death' (and calls player.die()); we
-  // spawn the flailing puppet at the hit spot. Real gameplay (rAF loop) lets it
-  // play ~1.5s before respawning; the headless test step() resolves instantly.
+  // spawn the flailing puppet at the hit spot and punch the camera (held so it
+  // freezes on the spot + shakes while the puppet flails). Real gameplay (rAF
+  // loop) lets it play ~1.5s before respawning; the headless test step()
+  // resolves instantly (and releases the camera) so traversal is unaffected.
   let dying = false;
   let dyingT = 0;
   events.on('death', ({ position, velocity }) => {
@@ -53,13 +57,20 @@ async function start() {
     dying = true;
     dyingT = 1.5;
     if (position) ragdoll.spawn(position, velocity || { x: 0, y: 0, z: 0 });
+    followCam.hold();
+    followCam.shake(0.7, 0.55);
   });
   function resolveDeath(snapCam) {
     ragdoll.clear();
     player.respawn();
+    followCam.release();
     if (snapCam) followCam.snap();
     dying = false;
   }
+
+  // Hard landings give the camera a small thump (the player tags airTime>=0.32
+  // as a "hard" landing; soft hops don't shake).
+  events.on('land', ({ hard }) => { if (hard) followCam.shake(0.22, 0.24); });
 
   // Small level label (avoids touching hud.js).
   const label = document.createElement('div');
@@ -69,13 +80,16 @@ async function start() {
 
   hud.onRestart(() => { player.respawn(); hud.reset(); followCam.snap(); });
 
-  // Progression: on finish, advance to the next level (reload) after a beat.
+  // Progression: on finish, let the win banner + confetti play, then wipe to the
+  // next level with a fade (transition.fadeOut covers the screen before reload).
   let advancing = false;
   events.on('finish', () => {
     if (advancing) return;
     advancing = true;
     if (levelIndex + 1 < LEVELS.length) {
-      setTimeout(() => { location.search = `?level=${levelIndex + 2}`; }, 1900);
+      setTimeout(() => {
+        transition.fadeOut(550, () => { location.search = `?level=${levelIndex + 2}`; });
+      }, 1350);
     }
   });
 
@@ -94,7 +108,7 @@ async function start() {
     player.fixedUpdate(FIXED_DT, yaw);
     physics.stepOnce();
     interactions.update();
-    player.syncVisual();
+    player.syncVisual(FIXED_DT);
     if (input.restartPressed && input.restartPressed()) { player.respawn(); hud.reset(); followCam.snap(); }
   }
 
@@ -113,16 +127,21 @@ async function start() {
   window.__ready = true;
   console.log(`[game] ready — level ${levelIndex + 1}/${LEVELS.length} (${level.name})`);
 
+  // Reveal the scene with a gentle fade-in once everything is framed.
+  transition.fadeIn(500);
+
   let last = performance.now();
   let acc = 0;
   function frame(now) {
     const dt = Math.min((now - last) / 1000, 0.1);
     last = now;
     if (dying) {
-      // Camera frozen on the hit spot; step physics so the ragdoll flails, then respawn.
+      // Step physics so the ragdoll flails; keep the camera held on the hit spot
+      // (it shakes via the held shake), then respawn once the puppet plays out.
       acc += dt;
       let guard = 0;
       while (acc >= FIXED_DT && guard++ < 5) { physics.stepOnce(); ragdoll.update(FIXED_DT); dyingT -= FIXED_DT; acc -= FIXED_DT; }
+      followCam.update(dt);
       if (dyingT <= 0) resolveDeath(true);
     } else if (simRunning) {
       acc += dt;

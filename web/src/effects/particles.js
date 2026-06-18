@@ -5,6 +5,12 @@
 //     that shoot outward with random velocities, are pulled down by gravity, and
 //     fade + shrink out over ~0.6s.
 //   On 'coin' {position}: a quick small sparkle pop (~8 bright-yellow bits, ~0.35s).
+//   On 'land' {position, hard}: a low, soft ground dust puff under the feet that
+//     splays outward nearly horizontally and settles (~6-10 bits, or ~12-16 + a
+//     touch faster when `hard`), short life ~0.35-0.5s.
+//   On 'finish' {position}: a celebratory confetti burst (~40-60 bright toy-colored
+//     bits) that shoots up and out with a strong upward bias, slow gravity, and a
+//     gentle flutter so it hangs in the air ~1.0-1.5s like a party popper.
 //
 // Implementation: ONE pooled THREE.Points backed by a single BufferGeometry with
 // per-point position / color / size / alpha attributes, drawn with a tiny
@@ -14,7 +20,7 @@
 // Total live particles are hard-capped so the effect always stays cheap.
 import * as THREE from 'three';
 
-const MAX_PARTICLES = 200; // hard cap on simultaneously-live bits
+const MAX_PARTICLES = 320; // hard cap on simultaneously-live bits (room for a full confetti burst + other effects)
 const GRAVITY = 9.0; // downward accel (units/s^2) applied to every bit
 
 // Cheerful death palette: punchy saturated reds + crisp whites. The reds are kept
@@ -32,6 +38,23 @@ const COIN_COLORS = [
   new THREE.Color('#ffcf1a'), // bright gold-yellow
   new THREE.Color('#ffb300'), // amber gold
   new THREE.Color('#fff27a'), // pale highlight
+];
+// Landing dust palette: pale greys + warm whites that read as soft kicked-up dust
+// over both the light studio sky and darker level geometry.
+const DUST_COLORS = [
+  new THREE.Color('#e9eef3'), // pale cool grey
+  new THREE.Color('#d7dde6'), // soft grey
+  new THREE.Color('#ffffff'), // white
+];
+// Finish confetti palette: bright saturated toy colors — reds, blues, yellows,
+// greens, pinks + white — for a party-popper celebration burst.
+const CONFETTI_COLORS = [
+  new THREE.Color('#ff3b30'), // red
+  new THREE.Color('#ff2d78'), // pink
+  new THREE.Color('#2e7dff'), // blue
+  new THREE.Color('#ffd21a'), // yellow
+  new THREE.Color('#2ecc55'), // green
+  new THREE.Color('#ffffff'), // white
 ];
 
 export function createParticles(scene, events) {
@@ -215,9 +238,81 @@ export function createParticles(scene, events) {
     }
   }
 
+  // --- LAND DUST PUFF: a small, soft ground puff kicked up under the player's
+  // feet on landing. Pale dust bits splay OUTWARD nearly horizontally (low vy,
+  // mostly XZ), short life (~0.35..0.5s), light gravity + a bit of drag so they
+  // settle quickly. A `hard` landing makes it bigger/faster; otherwise it's subtle.
+  function emitLand(land) {
+    if (!land || !land.position) return;
+    const pos = land.position;
+    const hard = !!land.hard;
+    const n = hard ? 12 + Math.floor(Math.random() * 5) // 12..16 on a hard landing
+                   : 6 + Math.floor(Math.random() * 5); // 6..10 normally
+    // Feet are ~0.75 below the player's center; spawn the puff low at the ground.
+    const fy = pos.y - 0.7;
+    for (let i = 0; i < n; i++) {
+      // Mostly-horizontal direction: pick a heading in XZ, splay out flat.
+      const theta = Math.random() * Math.PI * 2;
+      const dx = Math.cos(theta);
+      const dz = Math.sin(theta);
+      const speed = hard ? 2.6 + Math.random() * 2.0 // 2.6..4.6 — a touch faster
+                         : 1.6 + Math.random() * 1.6; // 1.6..3.2 — subtle
+      const vx = dx * speed;
+      const vy = 0.4 + Math.random() * 0.7; // low upward so it puffs, not sprays
+      const vz = dz * speed;
+      const color = DUST_COLORS[(Math.random() * DUST_COLORS.length) | 0];
+      const size = hard
+        ? 0.26 + Math.random() * 0.22 // bigger bits (~0.26..0.48)
+        : 0.2 + Math.random() * 0.16; // small soft bits (~0.20..0.36)
+      const life = 0.35 + Math.random() * 0.15; // ~0.35..0.5s
+      // Jitter around the feet, wider on the ground plane than vertically.
+      spawn(
+        pos.x + (Math.random() - 0.5) * 0.3,
+        fy + (Math.random() - 0.5) * 0.12,
+        pos.z + (Math.random() - 0.5) * 0.3,
+        vx, vy, vz, color, size, life, 4.0, 2.4, // light gravity, fair bit of drag so they settle
+      );
+    }
+  }
+
+  // --- FINISH CONFETTI: a celebratory party-popper burst of ~40-60 bright bits
+  // shooting UP and outward with a strong upward bias. Slower gravity than the
+  // death bits (so they hang + flutter), longer life (~1.0..1.5s), and mild drag
+  // plus a little random sideways velocity so they drift instead of going straight up.
+  function emitFinish(pos) {
+    if (!pos) return;
+    const n = 40 + Math.floor(Math.random() * 21); // 40..60
+    // Spawn a bit above the finish point so the confetti rains down over it.
+    const cy = pos.y + 1;
+    for (let i = 0; i < n; i++) {
+      // Direction on a sphere, but heavily biased upward via the velocity below.
+      const theta = Math.random() * Math.PI * 2;
+      const phi = Math.acos(2 * Math.random() - 1);
+      const sinPhi = Math.sin(phi);
+      const dx = sinPhi * Math.cos(theta);
+      const dy = Math.cos(phi);
+      const dz = sinPhi * Math.sin(theta);
+      const speed = 2.6 + Math.random() * 3.4; // 2.6..6.0 units/s
+      const vx = dx * speed + (Math.random() - 0.5) * 1.6; // little sideways flutter
+      const vy = Math.abs(dy * speed) + 4.5 + Math.random() * 2.0; // strong upward bias
+      const vz = dz * speed + (Math.random() - 0.5) * 1.6;
+      const color = CONFETTI_COLORS[(Math.random() * CONFETTI_COLORS.length) | 0];
+      const size = 0.2 + Math.random() * 0.18; // small confetti bits (~0.20..0.38)
+      const life = 1.0 + Math.random() * 0.5; // ~1.0..1.5s — they hang and flutter
+      spawn(
+        pos.x + (Math.random() - 0.5) * 0.3,
+        cy + (Math.random() - 0.5) * 0.3,
+        pos.z + (Math.random() - 0.5) * 0.3,
+        vx, vy, vz, color, size, life, 3.5, 0.9, // slower gravity + gentle drag so they flutter down
+      );
+    }
+  }
+
   // Subscribe in the constructor. Keep the unsubscribe handles for dispose().
   const offDeath = events.on('death', ({ position }) => emitDeath(position));
   const offCoin = events.on('coin', ({ position }) => emitCoin(position));
+  const offLand = events.on('land', (land) => emitLand(land));
+  const offFinish = events.on('finish', ({ position }) => emitFinish(position));
 
   function update(dt) {
     if (count === 0) {
@@ -283,6 +378,8 @@ export function createParticles(scene, events) {
   function dispose() {
     offDeath && offDeath();
     offCoin && offCoin();
+    offLand && offLand();
+    offFinish && offFinish();
     scene.remove(points);
     geometry.dispose();
     material.dispose();

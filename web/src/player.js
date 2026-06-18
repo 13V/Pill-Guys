@@ -43,6 +43,17 @@ export function createPlayer(scene, physics, input, spawn, events) {
   const lastPos = { x: spawn.x, y: spawn.y, z: spawn.z };
   let lastVel = { x: 0, y: 0, z: 0 };
 
+  // --- Juice (visual only) state ---------------------------------------------
+  // squash: a single scalar driving vertical squash & stretch. >0 = stretch
+  // (rising), <0 = squash (landing impact). It springs back to 0 each frame.
+  let squash = 0;
+  let squashVel = 0;       // velocity term for the critically-damped spring
+  let wasGroundedVis = false; // previous grounded, tracked in syncVisual for landing detection
+  let idlePhase = 0;       // breathing-bob phase
+  let blinkTimer = 2.5 + Math.random() * 2.5; // seconds until next blink
+  let blinkClose = 0;      // remaining seconds the eyes stay shut
+  const FEET_OFFSET = 0.78; // feet bottom sits ~0.78 below object3D origin; anchor squash here
+
   function fixedUpdate(dt, camYaw = 0) {
     if (!alive) return; // frozen while the ragdoll plays out
 
@@ -79,13 +90,19 @@ export function createPlayer(scene, physics, input, spawn, events) {
     const res = character.computeMove({ x: hx * dt, y: vy * dt, z: hz * dt });
     const wasGrounded = grounded;
     grounded = res.grounded;
-    if (grounded && !wasGrounded) { if (airTime >= LAND_AIR_MIN) emit('land', { airTime }); airTime = 0; jumpCutArmed = false; }
+    if (grounded && !wasGrounded) {
+      if (airTime >= LAND_AIR_MIN) {
+        const p = character.translation();
+        emit('land', { airTime, hard: airTime >= 0.32, position: { x: p.x, y: p.y, z: p.z } });
+      }
+      airTime = 0; jumpCutArmed = false;
+    }
     else if (!grounded) airTime += dt;
     else airTime = 0;
     if (grounded && vy < 0) vy = STICK_VY;
   }
 
-  function syncVisual() {
+  function syncVisual(dt = 1 / 60) {
     const t = character.translation();
     object3D.position.set(t.x, t.y, t.z);
 
@@ -115,6 +132,71 @@ export function createPlayer(scene, physics, input, spawn, events) {
         for (const m of [limbs.legL, limbs.legR, limbs.armL, limbs.armR]) m.rotation.x *= 0.8;
       }
     }
+
+    // --- Juice: squash & stretch, idle breathing, eye blink (visual only) -----
+    if (limbs && limbs.rig) {
+      // Landing impact: on the grounded transition, punch a squash sized by the
+      // fall (airTime captured before fixedUpdate reset it is gone, so use the
+      // landing velocity proxy: a longer fall => faster vy => firmer squash).
+      const justLanded = grounded && !wasGroundedVis;
+      if (justLanded) {
+        // -lastVel.y is downward speed at impact; map to a squash punch. A normal
+        // hop (impact vy ~12.5) lands near the suggested squash (sy ~0.78 = -0.22);
+        // only the hardest/tallest falls (vy toward MAX_FALL) push to a flat splat.
+        const impact = Math.min(1, Math.max(0, (-lastVel.y - 4) / 18));
+        squash = -(0.10 + 0.22 * impact); // -0.10 (soft) .. -0.32 (hard splat)
+        squashVel = 0;
+      } else if (!grounded) {
+        // Airborne: ease the stretch/pre-squash pose directly and hold it. The
+        // return spring below would otherwise fight it flat before it ever reads,
+        // so we keep squashVel parked while in the air.
+        const target = lastVel.y > 0
+          ? Math.min(0.14, lastVel.y * 0.014)   // rising: stretch up to +0.14
+          : Math.max(-0.06, lastVel.y * 0.004); // falling: slight pre-squash
+        squash += (target - squash) * Math.min(1, dt * 24);
+        squashVel = 0;
+      } else {
+        // Grounded (past the landing frame): critically-damped spring back to the
+        // rest pose. omega sets the ~0.18s settle; integrated with dt so it's
+        // frame-rate independent.
+        const omega = 22;
+        squashVel += (-squash * omega * omega - squashVel * 2 * omega) * dt;
+        squash += squashVel * dt;
+      }
+
+      // Idle breathing: only when grounded and basically still. A tiny extra
+      // vertical bob layered on the squash scalar so the guy is never dead-still.
+      let breathe = 0;
+      if (grounded && hdist < 0.003) {
+        idlePhase += dt * 2.2;
+        breathe = Math.sin(idlePhase) * 0.02;
+      } else {
+        idlePhase = 0;
+      }
+
+      // Apply: convert the squash scalar into a volume-preserving-ish scale.
+      const sy = 1 + squash + breathe;          // vertical
+      const sxz = 1 - (squash + breathe) * 0.7;  // lateral (opposite sign)
+      limbs.rig.scale.set(sxz, sy, sxz);
+      // Anchor at the feet: shift the rig so the feet bottom stays planted.
+      limbs.rig.position.y = FEET_OFFSET * (sy - 1);
+
+      // Eye blink: count down to the next blink; when it fires hold the lids
+      // shut briefly, then reschedule. Don't blink while dead.
+      if (alive) {
+        if (blinkClose > 0) {
+          blinkClose -= dt;
+        } else {
+          blinkTimer -= dt;
+          if (blinkTimer <= 0) { blinkClose = 0.09; blinkTimer = 2.5 + Math.random() * 2.5; }
+        }
+      } else {
+        blinkClose = 0;
+      }
+      const eyeScaleY = blinkClose > 0 ? 0.1 : 1;
+      if (limbs.eyes) for (const e of limbs.eyes) e.scale.y = eyeScaleY;
+    }
+    wasGroundedVis = grounded;
   }
 
   function respawn() {
@@ -124,6 +206,11 @@ export function createPlayer(scene, physics, input, spawn, events) {
     lastPos.x = spawn.x; lastPos.y = spawn.y; lastPos.z = spawn.z;
     object3D.visible = true;
     alive = true;
+    // Reset juice so a respawned character reads normal immediately.
+    squash = 0; squashVel = 0; wasGroundedVis = false; idlePhase = 0;
+    blinkClose = 0; blinkTimer = 2.5 + Math.random() * 2.5;
+    if (limbs && limbs.rig) { limbs.rig.scale.set(1, 1, 1); limbs.rig.position.set(0, 0, 0); }
+    if (limbs && limbs.eyes) for (const e of limbs.eyes) e.scale.y = 1;
   }
 
   function die() {
@@ -170,10 +257,18 @@ function buildCharacter(parent) {
   const limbMat = new THREE.MeshStandardMaterial({ color: 0xe23b3b, roughness: 0.45, metalness: 0.05 });
   const capMat = new THREE.MeshStandardMaterial({ color: 0xfff0e6, roughness: 0.3, metalness: 0.05 }); // cream hands/feet
 
+  // Squash & stretch rig: a single Group holding ALL character meshes so we can
+  // scale/offset the whole character (juice) without disturbing object3D.position
+  // (physics tracks it, camera follows) or object3D.rotation.y (facing). The
+  // walk-cycle limb rotations still work since the limbs live under the rig.
+  const rig = new THREE.Group();
+  parent.add(rig);
+  const parent_ = rig; // everything below parents into the rig
+
   // Torso (the bean).
   const body = new THREE.Mesh(new THREE.CapsuleGeometry(RADIUS, 2 * HALF_HEIGHT, 8, 20), bodyMat);
   body.castShadow = true; body.receiveShadow = true;
-  parent.add(body);
+  parent_.add(body);
 
   // A limb hinged at (px,py): a Group at the hinge holding a capsule that hangs
   // below it, capped with a rounded sphere (hand/foot). baseZ tilts it outward.
@@ -189,7 +284,7 @@ function buildCharacter(parent) {
     cap.position.y = -(length + r * 0.5);
     cap.castShadow = true;
     g.add(cap);
-    parent.add(g);
+    parent_.add(g);
     return g;
   }
   // Legs: spaced apart, hung from the lower bean so the cream feet peek out below.
@@ -203,12 +298,14 @@ function buildCharacter(parent) {
   const whiteMat = new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.25 });
   const pupilMat = new THREE.MeshStandardMaterial({ color: 0x1a1a22, roughness: 0.4 });
   const eyeY = HALF_HEIGHT * 0.6, eyeX = RADIUS * 0.42, eyeZ = RADIUS * 0.92;
+  const eyes = []; // eye-white meshes — Y-scaled to blink
   for (const sx of [-1, 1]) {
     const white = new THREE.Mesh(new THREE.SphereGeometry(RADIUS * 0.26, 16, 12), whiteMat);
-    white.position.set(sx * eyeX, eyeY, eyeZ); white.castShadow = true; parent.add(white);
+    white.position.set(sx * eyeX, eyeY, eyeZ); white.castShadow = true; parent_.add(white);
+    eyes.push(white);
     const pupil = new THREE.Mesh(new THREE.SphereGeometry(RADIUS * 0.13, 12, 10), pupilMat);
-    pupil.position.set(sx * eyeX, eyeY, eyeZ + RADIUS * 0.16); parent.add(pupil);
+    pupil.position.set(sx * eyeX, eyeY, eyeZ + RADIUS * 0.16); parent_.add(pupil);
   }
 
-  return { body, legL, legR, armL, armR };
+  return { rig, body, legL, legR, armL, armR, eyes };
 }

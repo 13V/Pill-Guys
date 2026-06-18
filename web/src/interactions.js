@@ -85,11 +85,13 @@ export function createInteractions({ physics, player, hud, world, events }) {
         player.setConveyor(null);
       }
 
-      // Finish: celebrate once.
+      // Finish: celebrate once. Pass the player's position so the confetti
+      // burst pops where they crossed the line.
       if (onFinish && !won) {
         won = true;
         hud.win();
-        emit('finish');
+        const t = player.translation();
+        emit('finish', { position: { x: t.x, y: t.y, z: t.z } });
       }
     },
   };

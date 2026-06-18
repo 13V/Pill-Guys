@@ -3,7 +3,8 @@
 // export function createAudio(events) -> { resume(), dispose() }
 //   Subscribe to gameplay events and play short, pleasant synthesized SFX (no asset
 //   files): 'jump' (rising blip), 'coin' (bright two-note ping), 'spring' (boing),
-//   'death' (descending buzz/thud), 'finish' (little victory arpeggio).
+//   'death' (descending buzz/thud), 'finish' (little victory arpeggio),
+//   'land' (soft low thud/plop, scaled by landing strength).
 //   Lazily create one AudioContext; browsers block audio until a user gesture, so
 //   resume() the context on the first keydown/pointerdown (add a one-shot listener).
 //   Use oscillators + gain envelopes (and noise for death). Keep master volume modest
@@ -139,9 +140,11 @@ export function createAudio(events) {
   function playJump() {
     if (!ensureCtx()) return;
     const t = ctx.currentTime;
-    tone(t, 'square', 440, 0.12, 0.22, { glideTo: 660, attack: 0.005, release: 0.05 });
+    // Tiny random pitch wobble (~0.96–1.04) so repeated jumps don't sound identical.
+    const v = 0.96 + Math.random() * 0.08;
+    tone(t, 'square', 440 * v, 0.12, 0.22, { glideTo: 660 * v, attack: 0.005, release: 0.05 });
     // A touch of triangle on top sweetens the edge of the square.
-    tone(t, 'triangle', 880, 0.1, 0.06, { glideTo: 1320, attack: 0.005, release: 0.05 });
+    tone(t, 'triangle', 880 * v, 0.1, 0.06, { glideTo: 1320 * v, attack: 0.005, release: 0.05 });
   }
 
   // 'coin': a bright two-note ping, E6 -> B6 on sine, with a little high sparkle.
@@ -198,6 +201,36 @@ export function createAudio(events) {
     });
   }
 
+  // 'land': a short, soft, low "thud/plop" when the player touches down. Kept
+  // well under the other SFX so frequent landings stay pleasant rather than
+  // annoying. Scales with the landing strength via payload.hard / payload.airTime.
+  function playLand(payload) {
+    if (!ensureCtx()) return;
+    const t = ctx.currentTime;
+    const hard = !!(payload && payload.hard);
+    const airTime = (payload && typeof payload.airTime === 'number') ? payload.airTime : 0;
+    // "Softness" of the touchdown: short hops are very gentle, longer falls firmer.
+    const soft = !hard && airTime < 0.18;
+
+    // Low blip that drops slightly in pitch — a triangle "plop". Harder landings
+    // sit a little lower and a touch louder; soft ones are quieter and gentler.
+    const startF = hard ? 180 : 160;
+    const endF = hard ? 105 : 115;
+    const blipPeak = soft ? 0.07 : (hard ? 0.13 : 0.1);
+    const blipDur = soft ? 0.08 : (hard ? 0.12 : 0.1);
+    tone(t, 'triangle', startF, blipDur, blipPeak, {
+      glideTo: endF,
+      attack: 0.004,
+      release: soft ? 0.05 : 0.07,
+    });
+
+    // Body of the impact: a very short low-passed noise thump. Skip it entirely
+    // on very soft landings so light hops are just the faint blip.
+    if (!soft) {
+      noiseBurst(t, hard ? 0.1 : 0.07, hard ? 0.1 : 0.06, hard ? 320 : 260);
+    }
+  }
+
   // --- Resume on user gesture ------------------------------------------------
 
   // Browsers start the AudioContext 'suspended' and only allow it to run after a
@@ -241,6 +274,7 @@ export function createAudio(events) {
     unsubscribers.push(events.on('spring', playSpring));
     unsubscribers.push(events.on('death', playDeath));
     unsubscribers.push(events.on('finish', playFinish));
+    unsubscribers.push(events.on('land', playLand));
     addGestureListeners();
   }
 
