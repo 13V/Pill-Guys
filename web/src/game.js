@@ -81,7 +81,7 @@ async function start() {
   let simRunning = true;
   window.__game = {
     scene, camera, physics, player, world, hud, input, followCam, events,
-    levelIndex, levelCount: LEVELS.length, levelName: level.name,
+    levelIndex, levelCount: LEVELS.length, levelName: level.name, levelData: level,
     pause() { simRunning = false; },
     resume() { simRunning = true; },
     step(n = 1) { for (let i = 0; i < n; i++) { simStep(); followCam.update(FIXED_DT); } },
