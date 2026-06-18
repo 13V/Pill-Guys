@@ -1,4 +1,4 @@
-// Level 3 PATH — "Furnace Gaps" (medium, ~62u). Decks/spawn/finish skeleton.
+// Level 3 PATH — "Furnace Gaps" (medium, ~66u). Decks/spawn/finish skeleton.
 //
 // Identity (kept, but COMPRESSED): real GAPS to jump between decks (all <=4u, under
 // the 5u max), a CONVEYOR that pushes +X straight INTO a jump-gap, a RAISED section
@@ -8,25 +8,26 @@
 // hub into a SAFE far lane (z-3) and a RISKY near lane (z+3) with an EMPTY MIDDLE
 // (z -2..+2 is a void over the lane X-range, so you MUST commit to one side), then
 // rejoins at a hub:
-//   * BRANCH 1 (top 5):  SAFE = clear strip + 1 coin;  RISKY = size-4 spike gauntlet
+//   * BRANCH 1 (top 5):  SAFE = clear strip + 1 coin;  RISKY = size-2 spike gauntlet
 //                        (the level's ONLY lethal hazard) + 3 coins (3x the safe pay).
 //   * BRANCH 2 (top 8, the raised section):  SAFE = a clear, longer strip + 1 coin;
 //                        RISKY = a SHORTCUT: a 4u jump-gap over a (decorative) pit,
 //                        landing earlier than the safe walk + 3 coins.
 //
 // COMPRESSION vs the old 90u build: hubs are w4 d6 (4u in X, but full z-3..+3 depth so
-// side lanes still thread them), branch lanes are 8u (not 10u), and every connective
-// gap is a tight 2u commit-hop (the two SHOWCASE jumps — the early gap and the B2 pit —
-// stay a real ~3-4u). Spine pieces (conveyor, hubs) span z-3..+3 so either side lane
-// can thread the whole level. Spring pads carry twins at cz -3/0/+3 (see hazards.js) so
-// any lane gets launched; the finish is d6 so any lane lands in the win sensor.
+// side lanes still thread them), branch lanes are 8-9u, and lane entries are FLUSH off
+// their hub (no commit-gap — the void middle alone forces the choice). The two SHOWCASE
+// jumps stay real: the 4u early gap and the 4u B2 pit. Spine pieces (conveyor, hubs) span
+// z-3..+3 so either side lane can thread the whole level. Spring pads carry twins at
+// cz -3/0/+3 (see hazards.js) so any lane gets launched; the finish is d6 so any lane
+// lands in the win sensor.
 //
 // DIFFICULTY (medium, intentionally < Level 4): exactly ONE lethal placed hazard (the
 // B1 spike gauntlet). L4 has two lethal sensors, so the lethal ramp is L3(1) < L4(2).
 // The B2 pit saw is DECORATIVE (a pit under a real gap — the jump is the challenge, not
 // a death box). No center spikeblocks: the empty middle alone forces lane commitment.
-// Three on-the-line challenges: the early jump-gap chain, the B1 gauntlet lane, and the
-// conveyor-fed B2 jump-gap.
+// Three on-the-line challenges: the 4u early jump-gap, the B1 spike-gauntlet lane, and
+// the raised B2 4u jump-gap (a shortcut). All sit on the walked line.
 //
 // Deck X-spans & gaps (all gaps <=4u):
 //   A spawn 0..6 | gap 4 (REAL early jump) | C(B1 entry) 10..14
