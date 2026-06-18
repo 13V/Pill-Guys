@@ -67,14 +67,19 @@ export async function buildLevel(level, { scene, physics }) {
   const noteX = (x) => { minX = Math.min(minX, x); maxX = Math.max(maxX, x); };
 
   // ---- Legs under a footprint (cx,cz) of size (w x d), deck base at `base` ----
+  // Stack pillars from the floor up to `base` so legs fully reach the deck
+  // (no floating gap) for any deck height, not just top=5/finish.
+  function stackLegs(x, z, base) {
+    let y = 0;
+    for (const p of PILLARS) while (base - y >= p - 0.01) { P([`pillar_2x2x${p}`, 'neutral', x, z, y]); y += p; }
+  }
   function addLegs(cx, cz, w, d, base) {
     if (base <= 0.01) return;
-    const { name } = legPieceForHeight(base);
     const ox = Math.max(w / 2 - 1, 0.0);
     const oz = Math.max(d / 2 - 1, 0.0);
     const xs = w >= 4 ? [cx - ox, cx + ox] : [cx];
     const zs = d >= 4 ? [cz - oz, cz + oz] : [cz];
-    for (const x of xs) for (const z of zs) P([name, 'neutral', x, z, 0]);
+    for (const x of xs) for (const z of zs) stackLegs(x, z, base);
   }
 
   // ---- Side rails along the long (X) edges of a deck (rail sits ~0.8 inward) ----
@@ -136,9 +141,8 @@ export async function buildLevel(level, { scene, physics }) {
       const w = dk.w || 4, d = dk.d || 4;
       const top2 = dk.top ?? 10;
       const base2 = DECK_BASE_TO_FLOOR(top2 - 1); // deck is 2 thick (platform_4x4x2)
-      // tower legs
-      const { name: legName } = legPieceForHeight(top2 - 2);
-      for (const x of [dk.cx - 1, dk.cx + 1]) for (const z of [dk.cz - 1, dk.cz + 1]) P([legName, 'neutral', x, z, 0]);
+      // tower legs (stacked to the deck base)
+      for (const x of [dk.cx - 1, dk.cx + 1]) for (const z of [dk.cz - 1, dk.cz + 1]) stackLegs(x, z, top2 - 2);
       P([`platform_${w}x${d}x2`, dk.color || col, dk.cx, dk.cz, top2 - 2]);
       solid(dk.cx, top2, dk.cz, w / 2, d / 2, top2);
       // finish dressing + sensor
