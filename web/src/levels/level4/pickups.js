@@ -17,7 +17,7 @@ export const coins = [
   { x: 18, y: 6.2, z: 0 },     // C split hub 1
 
   // Branch 1 — SAFE 1 / RISKY 3
-  { x: 31, y: 6.2, z: -3 },    // SAFE lane (clear w2 walk)               — 1 normal coin
+  { x: 28, y: 6.2, z: -3 },    // SAFE lane (clear w2 walk, on pt1)       — 1 normal coin
   { x: 25, y: 6.4, z: 3 },     // RISKY run-up (before the gauntlet)      — reward
   { x: 29, y: 7.1, z: 3 },     // RISKY arc over the spike gauntlet       — reward (visible from hub)
   { x: 39, y: 6.6, z: 3 },     // RISKY bridge end (past the 4u jump-gap) — reward
@@ -26,7 +26,7 @@ export const coins = [
   { x: 50, y: 6.4, z: 0 },     // E conveyor
 
   // Branch 2 — SAFE 1 / RISKY 3
-  { x: 64,    y: 6.2, z: -3 }, // SAFE lane (clear w2 walk)               — 1 normal coin
+  { x: 61.5,  y: 6.2, z: -3 }, // SAFE lane (clear w2 walk, on pt1)       — 1 normal coin
   { x: 61.5,  y: 6.4, z: 3 },  // RISKY run-up (belt-assisted)            — reward
   { x: 65.75, y: 7.3, z: 3 },  // RISKY arc over the lethal-saw pit       — reward (visible from hub)
   { x: 68.5,  y: 6.6, z: 3 },  // RISKY landing on the rejoin hub         — reward

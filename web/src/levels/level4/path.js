@@ -46,10 +46,18 @@ export default {
     { kind: 'platform', cx: 18, cz: 0, w: 6, d: 6, rails: true },   // C SPLIT HUB 1        x:15..21  (gap 1)
 
     // ---- BRANCH 1 (x 23..40): the w2 PRECISION BRIDGE, split. 2u hop onto a lane. ----
-    { kind: 'strip', x0: 23, x1: 37, z: -3, w: 2 },                 // B1 SAFE  (far)       x:23..37  (clear continuous w2 walk)
-    { kind: 'strip', x0: 23, x1: 27, z:  3, w: 2 },                 // B1 RISKY run-up      x:23..27  (land before the gauntlet)
-    { kind: 'strip', x0: 31, x1: 34, z:  3, w: 2 },                 // B1 RISKY mid landing x:31..34  (gauntlet cx29 spans x27..31; land here)
-    { kind: 'strip', x0: 38, x1: 40, z:  3, w: 2 },                 // B1 RISKY bridge end  x:38..40  (after a 4u jump-gap x34..38)
+    // SAFE (far, z-3): a clear w2 walk, but NOT continuous — one 4u jump-gap (x31..35)
+    // makes it marginally SLOWER (no boost; the arc + recovery cost frames), so the
+    // boosted RISKY lane wins clearly. Both halves are flat w2, fixed-z, followable.
+    { kind: 'strip', x0: 23, x1: 31, z: -3, w: 2 },                 // B1 SAFE pt1 (far)    x:23..31  (clear w2 walk @8u/s)
+    { kind: 'strip', x0: 35, x1: 40, z: -3, w: 2 },                 // B1 SAFE pt2 (far)    x:35..40  (after a 4u jump-gap x31..35; still clear, 0-death)
+    // RISKY (near, z+3): a FORWARD-CONVEYOR shortcut (pushes +X -> ~12u/s vs 8). A solid
+    // run-up, then a long belt the size-4 gauntlet SITS ON (jump the spikes, land back on
+    // the belt — the L3-B1 model), then the 4u jump-gap, then a belt into hub D. The belt
+    // is the time-save; the gauntlet + gap are the risk.
+    { kind: 'strip', x0: 23, x1: 27, z:  3, w: 2 },                 // B1 RISKY run-up      x:23..27  (solid takeoff before the gauntlet)
+    { kind: 'conveyor', cx: 30.5, cz: 3, len: 7, w: 4 },            // B1 RISKY belt (+X)   x:27..34  (~12u/s; gauntlet cx29 sits on it; jump spikes, land on belt)
+    { kind: 'conveyor', cx: 39,   cz: 3, len: 2, w: 4 },            // B1 RISKY bridge end  x:38..40  (belt after a 4u jump-gap x34..38; rides into hub D)
 
     { kind: 'platform', cx: 43, cz: 0, w: 6, d: 6, rails: true },   // D SAW HUB / REJOIN 1 x:40..46  (rejoin 1; decor saw + center spikeblock)
     { kind: 'conveyor', cx: 50, cz: 0, len: 8, w: 6 },              // E conveyor (+X), w6  x:46..54  (flush off D; belt spans z-3..+3)
@@ -57,8 +65,13 @@ export default {
     { kind: 'platform', cx: 57, cz: 0, w: 6, d: 6, rails: true },   // F SPLIT HUB 2        x:54..60  (flush off belt; belt-assisted)
 
     // ---- BRANCH 2 (x 60..68): belt-assisted split, lethal saw IN the pit. ----
-    { kind: 'strip', x0: 60, x1: 68, z: -3, w: 2 },                 // B2 SAFE  (far)       x:60..68  (clear continuous w2 walk; flush off F)
-    { kind: 'strip', x0: 60, x1: 63.5, z: 3, w: 2 },                // B2 RISKY run-up      x:60..63.5 (belt-assisted; flush off F)
+    // SAFE (far, z-3): a clear w2 walk, but NOT continuous — one 4u jump-gap (x63..67)
+    // makes it marginally slower (no boost), so the boosted RISKY lane wins clearly.
+    { kind: 'strip', x0: 60, x1: 63, z: -3, w: 2 },                 // B2 SAFE pt1 (far)    x:60..63  (clear w2 walk @8u/s; flush off F)
+    { kind: 'strip', x0: 67, x1: 68, z: -3, w: 2 },                 // B2 SAFE pt2 (far)    x:67..68  (after a 4u jump-gap x63..67; still clear, 0-death)
+    // RISKY (near, z+3): a FORWARD-CONVEYOR run-up (pushes +X -> ~12u/s) into the 4.5u
+    // lethal-saw pit-jump. The belt is the time-save; the pit + in-pit saw are the risk.
+    { kind: 'conveyor', cx: 61.75, cz: 3, len: 3.5, w: 4 },         // B2 RISKY run-up belt x:60..63.5 (~12u/s; flush off F, boosts into the pit jump)
 
     { kind: 'platform', cx: 71, cz: 0, w: 6, d: 6, rails: true },   // G REJOIN HUB 2       x:68..74  (both lanes land; 4.5u risky gap x63.5..68; center spikeblock; per-lane springs)
     { kind: 'finish',   cx: 77, cz: 0, w: 6, d: 6, top: 10 },       // I finish             x:74..80  (spring -> finish; d6 spans lanes)
