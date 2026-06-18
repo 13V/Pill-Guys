@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
 import { CONFIG } from './config.js';
 import { PhysicsWorld } from './PhysicsWorld.js';
 import { Assets } from './Assets.js';
@@ -36,53 +37,76 @@ export class Game {
     this.renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
     this.renderer.shadowMap.enabled = true;
     this.renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+    // Filmic tone mapping + sRGB gives the clean "rendered" KayKit look.
+    this.renderer.toneMapping = THREE.ACESFilmicToneMapping;
+    this.renderer.toneMappingExposure = 1.05;
+    this.renderer.outputColorSpace = THREE.SRGBColorSpace;
+  }
+
+  _checkerTexture() {
+    const c = document.createElement('canvas');
+    c.width = 64;
+    c.height = 64;
+    const ctx = c.getContext('2d');
+    ctx.fillStyle = '#f3f6f9';
+    ctx.fillRect(0, 0, 64, 64);
+    ctx.fillStyle = '#dde4ea';
+    ctx.fillRect(0, 0, 32, 32);
+    ctx.fillRect(32, 32, 32, 32);
+    const tex = new THREE.CanvasTexture(c);
+    tex.wrapS = THREE.RepeatWrapping;
+    tex.wrapT = THREE.RepeatWrapping;
+    tex.repeat.set(140, 140);
+    tex.magFilter = THREE.NearestFilter;
+    tex.colorSpace = THREE.SRGBColorSpace;
+    return tex;
   }
 
   _initScene() {
     this.scene = new THREE.Scene();
-    this.scene.background = new THREE.Color(0x8fd6ff);
-    this.scene.fog = new THREE.Fog(0x8fd6ff, 60, 160);
+    this.scene.background = new THREE.Color(0xe9eef3);
+    this.scene.fog = new THREE.Fog(0xe9eef3, 110, 300);
+
+    // Soft image-based studio lighting — the key to the clean KayKit render look.
+    const pmrem = new THREE.PMREMGenerator(this.renderer);
+    this.scene.environment = pmrem.fromScene(new RoomEnvironment(), 0.04).texture;
 
     this.camera = new THREE.PerspectiveCamera(
       60,
       window.innerWidth / window.innerHeight,
       0.1,
-      500,
+      600,
     );
 
-    // Lighting
-    const hemi = new THREE.HemisphereLight(0xffffff, 0x6688aa, 0.65);
+    // Bright sky fill + a soft key light with gentle shadows.
+    const hemi = new THREE.HemisphereLight(0xffffff, 0xc9d4dd, 0.5);
     this.scene.add(hemi);
 
-    const sun = new THREE.DirectionalLight(0xfff4e0, 1.45);
-    sun.position.set(30, 60, 20);
+    const sun = new THREE.DirectionalLight(0xffffff, 2.1);
+    sun.position.set(40, 70, 25);
     sun.castShadow = true;
     sun.shadow.mapSize.set(2048, 2048);
     sun.shadow.camera.near = 1;
-    sun.shadow.camera.far = 200;
-    const s = 70;
+    sun.shadow.camera.far = 260;
+    const s = 80;
     sun.shadow.camera.left = -s;
     sun.shadow.camera.right = s;
     sun.shadow.camera.top = s;
     sun.shadow.camera.bottom = -s;
-    sun.shadow.bias = -0.0005;
+    sun.shadow.bias = -0.0004;
+    sun.shadow.radius = 3;
     this.scene.add(sun);
     this.sun = sun;
 
-    // "Slime" plane far below to make falls look intentional.
-    const slime = new THREE.Mesh(
-      new THREE.PlaneGeometry(1000, 1000),
-      new THREE.MeshStandardMaterial({
-        color: 0xff5fa2,
-        transparent: true,
-        opacity: 0.55,
-        roughness: 0.3,
-      }),
+    // Clean light "studio" checkerboard floor far below (matches KayKit promos).
+    const floor = new THREE.Mesh(
+      new THREE.PlaneGeometry(2000, 2000),
+      new THREE.MeshStandardMaterial({ map: this._checkerTexture(), roughness: 1, metalness: 0 }),
     );
-    slime.rotation.x = -Math.PI / 2;
-    slime.position.y = -8;
-    slime.receiveShadow = true;
-    this.scene.add(slime);
+    floor.rotation.x = -Math.PI / 2;
+    floor.position.y = -8;
+    floor.receiveShadow = true;
+    this.scene.add(floor);
   }
 
   async init() {
