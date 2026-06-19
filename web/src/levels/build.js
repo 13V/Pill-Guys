@@ -227,7 +227,10 @@ export async function buildLevel(level, { scene, physics }) {
     const top = hz.top ?? deckTopDefault;
     if (hz.kind === 'spikes') {
       const s = hz.size || 4;
-      P([`floor_spikes_${s}x${s}x1`, 'neutral', hz.cx, hz.cz, top]);
+      const sp = place(group, [`floor_spikes_${s}x${s}x1`, 'neutral', hz.cx, hz.cz, top]);
+      // Menacing extend/retract pulse. VISUAL ONLY — the death box is always-on,
+      // so the bed never fully sinks (worldAnim keeps scaleY well above zero).
+      tasks.push(sp.then((o) => { if (o) o.userData.pulse = { amp: 0.22, speed: 3.2, phase: (hz.cx + hz.cz) * 0.5 }; }));
       sensor(hz.cx, top + 0.5, hz.cz, s / 2, 0.5, s / 2, 'death');
     } else if (hz.kind === 'sawblade') {
       const saw = place(group, ['sawblade', 'neutral', hz.cx, hz.cz, top - 0.4, 0, 90, 0]);
@@ -239,7 +242,9 @@ export async function buildLevel(level, { scene, physics }) {
       sensor(hz.cx, top + 0.4, hz.cz, 0.6, 0.5, 3.0, 'death');
     } else if (hz.kind === 'spikeblock') {
       const dir = hz.dir || 'up';
-      P([`spikeblock_${dir}`, hz.color || color, hz.cx, hz.cz, top]);
+      const sb = place(group, [`spikeblock_${dir}`, hz.color || color, hz.cx, hz.cz, top]);
+      // Piston thrust in Y (visual only; the death sensor stays put).
+      tasks.push(sb.then((o) => { if (o) o.userData.osc = { axis: 'y', amp: 0.18, speed: 2.6, phase: hz.cz }; }));
       sensor(hz.cx, top + 0.6, hz.cz, 0.6, 0.6, 0.6, 'death');
     } else if (hz.kind === 'spikeroller') {
       const r = place(group, ['spikeroller_horizontal', 'neutral', hz.cx, hz.cz, top + 2]);

@@ -36,12 +36,16 @@ export function createWorldAnim(level) {
   // in when createWorldAnim is called, so we defer the traversal one frame).
   let spinners = null; // [{ obj, speed, axis }]
   let swingers = null; // [{ obj, axis, amp, speed, phase, base }] — pendulum hazards
+  let oscillators = null; // [{ obj, axis, amp, speed, phase, base }] — piston/throb props
+  let pulsers = null; // [{ obj, amp, speed, phase }] — scaleY pulse (spikes extend/retract)
   let beltMaps = null; // [THREE.Texture] — unique tread maps, RepeatWrapping enabled
   let clock = 0;
 
   function collect() {
     spinners = [];
     swingers = [];
+    oscillators = [];
+    pulsers = [];
     beltMaps = [];
     const seenMaps = new Set(); // dedupe maps shared across cloned conveyor instances
 
@@ -58,6 +62,19 @@ export function createWorldAnim(level) {
       if (sw) {
         const axis = sw.axis || 'z';
         swingers.push({ obj, axis, amp: sw.amp ?? 0.6, speed: sw.speed ?? 2, phase: sw.phase || 0, base: obj.rotation[axis] });
+      }
+
+      // --- Position oscillators (spike-block piston thrust, throbbing props) --
+      const os = obj.userData && obj.userData.osc;
+      if (os) {
+        const axis = os.axis || 'y';
+        oscillators.push({ obj, axis, amp: os.amp ?? 0.12, speed: os.speed ?? 3, phase: os.phase || 0, base: obj.position[axis] });
+      }
+
+      // --- ScaleY pulsers (floor spikes extend/retract; stay always-lethal) --
+      const pu = obj.userData && obj.userData.pulse;
+      if (pu) {
+        pulsers.push({ obj, amp: pu.amp ?? 0.2, speed: pu.speed ?? 3, phase: pu.phase || 0 });
       }
 
       // --- Conveyor belt 'threads' materials ---------------------------------
@@ -96,6 +113,17 @@ export function createWorldAnim(level) {
       // Swing each pendulum hazard around its base rotation.
       for (const s of swingers) {
         s.obj.rotation[s.axis] = s.base + s.amp * Math.sin(clock * s.speed + s.phase);
+      }
+
+      // Oscillate piston/throb props along an axis around their resting position.
+      for (const o of oscillators) {
+        o.obj.position[o.axis] = o.base + o.amp * Math.sin(clock * o.speed + o.phase);
+      }
+
+      // Pulse spike beds in Y (extend/retract). Stays >0.75 so they never fully
+      // sink — the death sensor is always-on, so they must always read dangerous.
+      for (const p of pulsers) {
+        p.obj.scale.y = 1 + p.amp * Math.sin(clock * p.speed + p.phase);
       }
 
       // Scroll each belt's tread along its travel axis (V → toward world +X).
