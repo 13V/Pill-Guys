@@ -158,7 +158,22 @@ export async function buildLevel(level, { scene, physics }) {
   }
 
   // ---- HAZARDS ----
-  for (const hz of level.hazards || []) {
+  // DECLUTTER: the decorative chaos props (non-lethal menace/sawblade/cone) are
+  // authored very densely (60-130 per level), which reads as visual NOISE. Thin
+  // them to a clean, spaced stream — keep only ones >= DECOR_SPACING apart in x —
+  // so each obstacle reads and the course looks designed, not messy. Every
+  // GAMEPLAY hazard (spikes gauntlets, lethal pit saws, etc.) is always kept.
+  const DECOR_SPACING = 6.5;
+  const isDecor = (h) => (h.kind === 'menace' || h.kind === 'sawblade' || h.kind === 'cone') && !h.lethal;
+  const keepDecor = new Set();
+  {
+    const sorted = (level.hazards || []).filter(isDecor).map((h, i) => ({ h, i }))
+      .sort((a, b) => ((a.h.cx ?? 0) - (b.h.cx ?? 0)) || (a.i - b.i));
+    let lastX = -Infinity;
+    for (const { h } of sorted) { const x = h.cx ?? 0; if (x - lastX >= DECOR_SPACING) { keepDecor.add(h); lastX = x; } }
+  }
+  const hazardsToBuild = (level.hazards || []).filter((h) => !isDecor(h) || keepDecor.has(h));
+  for (const hz of hazardsToBuild) {
     const top = hz.top ?? deckTopDefault;
     if (hz.kind === 'spikes') {
       const s = hz.size || 4;
