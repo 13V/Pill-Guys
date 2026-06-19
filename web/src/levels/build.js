@@ -183,16 +183,31 @@ export async function buildLevel(level, { scene, physics }) {
     } else if (hz.kind === 'cone') {
       P(['cone', 'red', hz.cx, hz.cz, top]); // decorative warning only
     } else if (hz.kind === 'menace') {
-      // Generic animated hazard: ANY hazard model, optional spin/swing, optional
-      // lethal box. Used to scatter the full hazard roster for chaos. Decorative
-      // by default (no death box) so it never blocks a lane; flag lethal sparingly.
+      // Generic animated hazard. SWINGING ones (hammers / spikeballs / wrecking
+      // arms) hang from a pivot anchored ABOVE the head and swing the PIVOT, so the
+      // head sweeps a real pendulum arc instead of the model rocking about its own
+      // base. Others place in place and optionally spin. Decorative by default (no
+      // death box) so it never blocks a lane; flag lethal sparingly.
       const dy = hz.dy ?? 0;
-      const mp = place(group, [hz.model, hz.color || 'neutral', hz.cx, hz.cz, top + dy, hz.ry || 0, hz.rx || 0, hz.rz || 0]);
-      tasks.push(mp.then((o) => {
-        if (!o) return;
-        if (hz.spin) o.userData.spin = { axis: hz.spin.axis || 'y', speed: hz.spin.speed ?? 5, localY: hz.spin.localY };
-        if (hz.swing) o.userData.swing = { axis: hz.swing.axis || 'z', amp: hz.swing.amp ?? 0.6, speed: hz.swing.speed ?? 2, phase: hz.swing.phase || 0 };
-      }));
+      if (hz.swing) {
+        const axis = hz.swing.axis === 'z' ? 'z' : 'x'; // vertical-plane pendulum (a 'y' swing isn't one -> x)
+        const arm = hz.arm ?? 2.8;                       // how far the head hangs below the pivot
+        const pivot = new THREE.Group();
+        pivot.position.set(hz.cx, top + dy + arm, hz.cz);
+        pivot.userData.swing = { axis, amp: hz.swing.amp ?? 0.7, speed: hz.swing.speed ?? 1.6, phase: hz.swing.phase || 0 };
+        group.add(pivot);
+        // a thin metal arm rod from the anchor down to the head
+        const rod = new THREE.Mesh(
+          new THREE.CylinderGeometry(0.08, 0.08, arm, 8),
+          new THREE.MeshStandardMaterial({ color: 0x556070, roughness: 0.5, metalness: 0.55 }),
+        );
+        rod.position.y = -arm / 2; rod.castShadow = true; pivot.add(rod);
+        const mp = place(pivot, [hz.model, hz.color || 'neutral', 0, 0, -arm, hz.ry || 0, hz.rx || 0, hz.rz || 0]);
+        tasks.push(mp.then((o) => { if (o && hz.spin) o.userData.spin = { axis: hz.spin.axis || 'y', speed: hz.spin.speed ?? 5, localY: hz.spin.localY }; }));
+      } else {
+        const mp = place(group, [hz.model, hz.color || 'neutral', hz.cx, hz.cz, top + dy, hz.ry || 0, hz.rx || 0, hz.rz || 0]);
+        tasks.push(mp.then((o) => { if (o && hz.spin) o.userData.spin = { axis: hz.spin.axis || 'y', speed: hz.spin.speed ?? 5, localY: hz.spin.localY }; }));
+      }
       if (hz.lethal) sensor(hz.cx, top + (hz.lethalDy ?? 0.6), hz.cz, hz.hx ?? 0.8, hz.hy ?? 0.8, hz.hzz ?? 0.8, 'death');
     }
   }
