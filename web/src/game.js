@@ -17,6 +17,7 @@ import { createTransition } from './effects/transition.js';
 import { createCinematics } from './effects/cinematics.js';
 import { createNet } from './net.js';
 import { createRemotePlayers } from './effects/remotePlayers.js';
+import { createOcean, SEA_LEVEL } from './effects/ocean.js';
 import { createAura } from './effects/aura.js';
 import { createPet } from './pet.js';
 import { cosmetics } from './cosmetics.js';
@@ -37,11 +38,11 @@ async function start() {
   let net = null;
   let remotePlayers = null;
 
-  const { scene, camera, renderer, controls } = createScene();
+  const { scene, camera, renderer, controls } = createScene({ environment: 'ocean' });
   if (controls) controls.enabled = false;
 
   const physics = await initPhysics();
-  const built = await buildLevel(level, { scene, physics }); // { group, spawn, coins, finishPos }
+  const built = await buildLevel(level, { scene, physics, seaLevel: SEA_LEVEL }); // { group, spawn, spawns, coins, finishPos }
   const world = built;
 
   // Equipped cosmetics (persisted in cosmetics.js / localStorage; defaults to the
@@ -66,6 +67,7 @@ async function start() {
   const ragdoll = createRagdoll(scene, physics);
   const transition = createTransition();
   const cinematics = createCinematics(); // FINISH slam + level card + 3-2-1-GO countdown
+  const ocean = createOcean(scene); // the sea the courses float above (death waterline)
   // Equipped aura rides on the player; equipped pet follows it.
   const aura = createAura(player.object3D);
   aura.setVariant(equipped.aura);
@@ -346,6 +348,7 @@ async function start() {
     }
     particles.update(dt);
     worldAnim.update(dt);
+    ocean.update(dt);
     coinJuice.update(dt);
     aura.update(dt);
     pet.update(dt, player.translation(), followCam.yaw());

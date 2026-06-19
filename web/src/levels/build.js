@@ -43,7 +43,7 @@ function legPieceForHeight(h) {
   return { name: 'pillar_1x1x1', h: 1 };
 }
 
-export async function buildLevel(level, { scene, physics }) {
+export async function buildLevel(level, { scene, physics, seaLevel = -8 }) {
   const group = new THREE.Group();
   scene.add(group);
 
@@ -311,10 +311,12 @@ export async function buildLevel(level, { scene, physics }) {
     else if (d.kind === 'gantry') buildGantry(P, d.cx, d.z ?? 3.5);
   }
 
-  // ---- Fall-off-the-world kill plane spanning the whole level ----
+  // ---- Ocean kill: a thick slab whose TOP sits at the waterline, so touching
+  // the sea (or falling past it) is lethal. Wide + deep so a sprung/launched
+  // player can't clear it and a fast fall can't tunnel through. ----
   const cxAll = (minX + maxX) / 2;
-  const span = Math.max(maxX - minX, 10) + 20;
-  sensor(cxAll, -8, 0, span / 2, 1, 40, 'death');
+  const span = Math.max(maxX - minX, 10) + 80;
+  sensor(cxAll, seaLevel - 12, 0, span / 2, 12, 140, 'death');
 
   await Promise.all(tasks);
 

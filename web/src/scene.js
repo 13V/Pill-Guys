@@ -8,7 +8,8 @@ import { RoomEnvironment } from 'three/examples/jsm/environments/RoomEnvironment
 // gentle vertical gradient backdrop, and a PMREM environment for that glossy
 // "toy plastic" sheen — all viewed from a 3/4 high-angle camera that reads the
 // level left -> right.
-export function createScene() {
+export function createScene(opts = {}) {
+  const ocean = opts.environment === 'ocean';
   const renderer = new THREE.WebGLRenderer({ antialias: true });
   renderer.setSize(window.innerWidth, window.innerHeight);
   renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
@@ -24,12 +25,12 @@ export function createScene() {
   // --- Background: a subtle vertical studio gradient (light top -> slightly
   // cooler/darker toward the floor) so the backdrop has depth instead of a flat
   // fill, matching the seamless-sweep look of the official renders.
-  scene.background = makeGradientTexture(
-    ['#f4f7fa', '#eef2f6', '#e3e9f0', '#d9e0e8'],
-    [0.0, 0.45, 0.78, 1.0]
-  );
-  // Gentle fog pushes distant ground toward the backdrop value for depth.
-  scene.fog = new THREE.Fog(0xe6ecf2, 110, 300);
+  scene.background = ocean
+    ? makeGradientTexture(['#4aa3ee', '#7cc4f6', '#bbe3fb', '#dcf1ff'], [0.0, 0.42, 0.74, 1.0])
+    : makeGradientTexture(['#f4f7fa', '#eef2f6', '#e3e9f0', '#d9e0e8'], [0.0, 0.45, 0.78, 1.0]);
+  // Fog blends distant geometry into the backdrop. Over the ocean it's a sky haze
+  // so the sea fades into the horizon seamlessly.
+  scene.fog = ocean ? new THREE.Fog(0xc4e6fb, 120, 360) : new THREE.Fog(0xe6ecf2, 110, 300);
 
   // --- Image-based lighting: soft room env gives plastic micro-highlights and
   // fills shadowed faces with believable bounce without washing the scene out.
@@ -98,6 +99,9 @@ export function createScene() {
   scene.add(new THREE.HemisphereLight(0xeaf2ff, 0x9aa6b4, 0.3));
   scene.add(new THREE.AmbientLight(0xffffff, 0.08));
 
+  // --- Ground + AO pool: the studio floor. Skipped over the ocean, where the
+  // water mesh (effects/ocean.js) receives the platforms' shadows instead.
+  if (!ocean) {
   // --- Ground: a large soft, light plane that receives the contact shadows.
   // Slightly cooler than the backdrop so the strip's shadow reads clearly.
   const ground = new THREE.Mesh(
@@ -135,6 +139,7 @@ export function createScene() {
   aoPool.position.set(11, 0.004, 0.5);
   aoPool.renderOrder = 1;
   scene.add(aoPool);
+  }
 
   window.addEventListener('resize', () => {
     camera.aspect = window.innerWidth / window.innerHeight;
