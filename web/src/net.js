@@ -19,7 +19,7 @@ const round = (n) => Math.round(n * 100) / 100;
 export function createNet(opts = {}) {
   const {
     url, room = 'public', level = 1, skin = null, name = 'Bean',
-    onWelcome, onJoin, onState, onFinish, onLeave,
+    onWelcome, onJoin, onState, onFinish, onLeave, onStart,
   } = opts;
 
   let ws = null;
@@ -38,9 +38,14 @@ export function createNet(opts = {}) {
       ws.addEventListener('message', (e) => {
         let m; try { m = JSON.parse(e.data); } catch { return; }
         switch (m.t) {
-          case 'welcome': selfId = m.id; onWelcome && onWelcome(m); break;
+          case 'welcome':
+            selfId = m.id; onWelcome && onWelcome(m);
+            // Late join into an already-started room: drop in immediately.
+            if (m.started && onStart) onStart({ inMs: m.inMs || 0 });
+            break;
           case 'join': onJoin && onJoin(m); break;
           case 'st': onState && onState(m); break;
+          case 'start': onStart && onStart(m); break;
           case 'fin': onFinish && onFinish(m); break;
           case 'leave': onLeave && onLeave(m); break;
           case 'full': console.warn('[net] room full'); break;

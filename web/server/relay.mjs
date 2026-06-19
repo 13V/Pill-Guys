@@ -20,14 +20,16 @@
 import { WebSocketServer } from 'ws';
 
 const PORT = Number(process.env.PORT || process.env.RELAY_PORT || 8787);
-const CAP = Number(process.env.CAP || 20); // max players per room
+const CAP = Number(process.env.CAP || 20);                   // max players per room
+const LOBBY_MS = Number(process.env.LOBBY_MS || 6000);       // wait for a room to fill before starting
+const GO_DELAY_MS = Number(process.env.GO_DELAY_MS || 4500); // shared time from 'start' to GO (fly-over + 3-2-1)
 
 const rooms = new Map(); // key -> { members: Map<id, member> }
 let nextId = 1;
 
 function roomFor(key) {
   let r = rooms.get(key);
-  if (!r) { r = { members: new Map() }; rooms.set(key, r); }
+  if (!r) { r = { members: new Map(), started: false, timer: null }; rooms.set(key, r); }
   return r;
 }
 // Lowest free slot index in the room, so spawn slots stay packed [0..n).
@@ -38,6 +40,20 @@ function freeSlot(room) {
 function send(ws, obj) { try { ws.send(JSON.stringify(obj)); } catch { /* socket gone */ } }
 function broadcast(room, obj, exceptId) {
   for (const m of room.members.values()) if (m.id !== exceptId) send(m.ws, obj);
+}
+
+// Start the room: everyone gets the SAME 'start' with a fixed delay to GO, so each
+// client schedules its 3-2-1-GO to land together (synchronised race start).
+function startRoom(room) {
+  if (!room || room.started) return;
+  room.started = true;
+  if (room.timer) { clearTimeout(room.timer); room.timer = null; }
+  broadcast(room, { t: 'start', inMs: GO_DELAY_MS });
+}
+// Arm the lobby timer on the first arrival so latecomers have a window to join.
+function maybeArm(room) {
+  if (room.started || room.timer || room.members.size < 1) return;
+  room.timer = setTimeout(() => startRoom(room), LOBBY_MS);
 }
 
 const wss = new WebSocketServer({ port: PORT });
@@ -65,11 +81,14 @@ wss.on('connection', (ws) => {
       room.members.set(id, me);
       send(ws, {
         t: 'welcome', id, slot: me.slot, cap: CAP,
+        started: room.started, inMs: room.started ? 0 : null,
         peers: [...room.members.values()].filter((m) => m.id !== id)
           .map((m) => ({ id: m.id, slot: m.slot, skin: m.skin, name: m.name, p: m.p, r: m.r })),
       });
       broadcast(room, { t: 'join', id, slot: me.slot, skin: me.skin, name: me.name, p: me.p, r: me.r }, id);
-      console.log(`[relay] +${id} -> ${roomKey} (${room.members.size}/${CAP})`);
+      // Start now if the room just filled, otherwise arm the lobby countdown.
+      if (room.members.size >= CAP) startRoom(room); else maybeArm(room);
+      console.log(`[relay] +${id} -> ${roomKey} (${room.members.size}/${CAP})${room.started ? ' [started]' : ''}`);
       return;
     }
 
@@ -94,7 +113,7 @@ wss.on('connection', (ws) => {
     room.members.delete(id);
     broadcast(room, { t: 'leave', id });
     console.log(`[relay] -${id} <- ${roomKey} (${room.members.size}/${CAP})`);
-    if (room.members.size === 0) rooms.delete(roomKey);
+    if (room.members.size === 0) { if (room.timer) clearTimeout(room.timer); rooms.delete(roomKey); }
   });
 
   ws.on('error', () => { /* let 'close' clean up */ });

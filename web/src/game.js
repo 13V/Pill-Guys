@@ -175,7 +175,13 @@ async function start() {
   const flyEnd = { px: built.spawn.x, py: hoverY + 7.5, pz: built.spawn.z + 11.5, lx: built.spawn.x, ly: hoverY + 1, lz: built.spawn.z };
   const FLY = 3.0;   // seconds of fly-over before the countdown
   const STEP = 0.72; // seconds per countdown number
-  let introActive = false, introT = 0, beanBobT = 0, lastCountIdx = -1, cardShown = false;
+  let introActive = false, introT = 0, beanBobT = 0, cardShown = false;
+  // Countdown is DEADLINE-driven (goAt, in perf-seconds) so every client hits GO
+  // at the same instant. Single-player presets it; multiplayer waits for the
+  // relay's shared 'start' (see onServerStart). goWall is the same deadline in
+  // Date.now() terms (exposed for the sync test); mpStarted gates the HUD label.
+  let goAt = null, goWall = null, mpStarted = false, lastCountNum = 0;
+  const perfSec = () => performance.now() / 1000;
   const lerp = (a, b, t) => a + (b - a) * t;
   const smoothstep = (t) => t * t * (3 - 2 * t);
 
@@ -190,6 +196,16 @@ async function start() {
   { const s = player.spawn; const oy = s.y; s.y = hoverY; player.respawn(); s.y = oy; player.syncVisual(); }
   introActive = true;
   setIntroCam(0);
+
+  // Single-player counts down on its own; multiplayer leaves goAt null until the
+  // relay broadcasts the shared start, so every player's GO lands together.
+  if (!mpUrl) goAt = perfSec() + FLY + 3 * STEP;
+  function onServerStart(inMs) {
+    if (!introActive || goAt != null) return; // already scheduled or dropped
+    goAt = perfSec() + (inMs || 0) / 1000;
+    goWall = Date.now() + (inMs || 0);
+    mpStarted = true;
+  }
 
   // GO: end the intro and hand the bean to gravity (it falls onto the spawn).
   function goDrop() {
@@ -233,17 +249,26 @@ async function start() {
     // gentle hover bob + slow turn while we wait
     player.object3D.position.set(built.spawn.x, hoverY + Math.sin(beanBobT * 2.2) * 0.16, built.spawn.z);
     player.object3D.rotation.y += dt * 0.5;
+    // establishing fly-over plays once, then holds on the start-line framing.
     if (introT < FLY) {
       setIntroCam(smoothstep(Math.min(1, introT / FLY)));
       if (!cardShown) { cardShown = true; cinematics.levelCard(`LEVEL ${levelIndex + 1} / ${LEVELS.length}`, level.name); }
     } else {
-      setIntroCam(1); // hold the final framing through the countdown
-      const idx = Math.floor((introT - FLY) / STEP);
-      if (idx !== lastCountIdx) {
-        lastCountIdx = idx;
-        if (idx === 0) cinematics.hideCard();
-        if (idx <= 2) { cinematics.count(String(3 - idx), false); events.emit('beep', { i: idx }); }
-        else goDrop();
+      setIntroCam(1);
+    }
+    // Deadline-driven 3-2-1-GO. In multiplayer goAt stays null until the server
+    // start arrives, so the bean just hovers (lobby "waiting"); once set, the same
+    // deadline on every client makes the GO simultaneous.
+    if (goAt == null) return;
+    const remaining = goAt - perfSec();
+    if (remaining <= 0) { goDrop(); return; }
+    if (remaining <= 3 * STEP + 1e-3) {
+      const num = Math.max(1, Math.min(3, Math.ceil(remaining / STEP)));
+      if (num !== lastCountNum) {
+        lastCountNum = num;
+        cinematics.hideCard();
+        cinematics.count(String(num), false);
+        events.emit('beep', { i: 3 - num });
       }
     }
   }
@@ -255,13 +280,17 @@ async function start() {
     mpTag.style.cssText = 'position:fixed;top:44px;left:12px;z-index:1100;font:700 12px "Baloo 2",system-ui,sans-serif;color:#10243f;background:rgba(255,255,255,0.88);border:2px solid #74ec6a;border-radius:12px;padding:4px 10px;pointer-events:none;user-select:none;';
     mpTag.textContent = '· connecting…';
     document.body.appendChild(mpTag);
-    const refreshTag = () => { mpTag.textContent = `🟢 ${remotePlayers.count() + 1} in race`; };
+    const refreshTag = () => {
+      const n = remotePlayers.count() + 1;
+      mpTag.textContent = mpStarted ? `🟢 ${n} in race` : `⏳ waiting · ${n} in lobby`;
+    };
     net = createNet({
       url: mpUrl, room: mpRoom, level: levelIndex + 1,
       skin: equipped.skin, name: 'Bean' + Math.floor(Math.random() * 900 + 100),
       onWelcome: (m) => { placeLocalAtSlot(m.slot); for (const pe of m.peers) remotePlayers.add(pe.id, pe.skin, pe.name, pe.p, pe.r); refreshTag(); },
       onJoin: (m) => { remotePlayers.add(m.id, m.skin, m.name, m.p, m.r); refreshTag(); },
       onState: (m) => { remotePlayers.setState(m.id, m.p, m.r, m.m); },
+      onStart: (m) => { onServerStart(m.inMs); refreshTag(); },
       onLeave: (m) => { remotePlayers.remove(m.id); refreshTag(); },
     });
     setTimeout(() => { if (net && !net.connected) mpTag.textContent = '⚠ no server (run: npm run relay)'; }, 4000);
@@ -279,6 +308,7 @@ async function start() {
       s.x = x; s.y = y; s.z = z; player.respawn(); s.x = o.x; s.y = o.y; s.z = o.z;
     },
     skipIntro,
+    introState: () => ({ introActive, goAt, goWall, mpStarted, simRunning }),
   };
   window.__ready = true;
   console.log(`[game] ready — level ${levelIndex + 1}/${LEVELS.length} (${level.name})`);
@@ -287,8 +317,10 @@ async function start() {
   transition.fadeIn(500);
 
   // Let an eager player skip straight to GO with space/enter or a click/tap.
-  window.addEventListener('keydown', (e) => { if (introActive && (e.key === ' ' || e.key === 'Enter')) goDrop(); });
-  window.addEventListener('pointerdown', () => { if (introActive) goDrop(); });
+  // Manual skip-to-GO is single-player only; in multiplayer the start is
+  // server-synchronised, so a player can't drop early.
+  window.addEventListener('keydown', (e) => { if (introActive && !mpUrl && (e.key === ' ' || e.key === 'Enter')) goDrop(); });
+  window.addEventListener('pointerdown', () => { if (introActive && !mpUrl) goDrop(); });
 
   let last = performance.now();
   let acc = 0;
