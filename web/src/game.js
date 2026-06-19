@@ -14,6 +14,7 @@ import { createWorldAnim } from './effects/worldAnim.js';
 import { createCoinJuice } from './effects/coins.js';
 import { createRagdoll } from './effects/ragdoll.js';
 import { createTransition } from './effects/transition.js';
+import { createCinematics } from './effects/cinematics.js';
 import { createAura } from './effects/aura.js';
 import { createPet } from './pet.js';
 import { cosmetics } from './cosmetics.js';
@@ -54,6 +55,7 @@ async function start() {
   const coinJuice = createCoinJuice(world, events);
   const ragdoll = createRagdoll(scene, physics);
   const transition = createTransition();
+  const cinematics = createCinematics(); // FINISH slam + level card + 3-2-1-GO countdown
   // Equipped aura rides on the player; equipped pet follows it.
   const aura = createAura(player.object3D);
   aura.setVariant(equipped.aura);
@@ -101,20 +103,28 @@ async function start() {
   lobbyBtn.addEventListener('click', () => { location.href = 'index.html'; });
   document.body.appendChild(lobbyBtn);
 
-  hud.onRestart(() => { player.respawn(); hud.reset(); followCam.snap(); });
+  hud.onRestart(() => { player.respawn(); hud.reset(); followCam.snap(); cinematics.clear(); advancing = false; simRunning = true; });
 
-  // Progression: on finish, bank the run's coins (+ a completion bonus) into the
-  // persistent wallet, let the win banner + confetti play, then wipe to the next
-  // level with a fade (transition.fadeOut covers the screen before reload).
+  // Progression: on finish, SLAM the "FINISH!" banner where they crossed and
+  // freeze the sim (so the celebrating bean doesn't stroll off the tower) while
+  // the confetti/fanfare play. Bank the run's coins (+ a completion bonus). Then
+  // either WIPE to the next level (whoosh + fade -> reload, where the 3-2-1-GO
+  // intro drops the player in), or on the final level show the win banner.
   let advancing = false;
   events.on('finish', () => {
     if (advancing) return;
     advancing = true;
+    cinematics.slam('FINISH!', `${level.name} — clear!`);
+    simRunning = false;
     cosmetics.addCoins((hud.coins || 0) + 100);
     if (levelIndex + 1 < LEVELS.length) {
       setTimeout(() => {
+        events.emit('whoosh');
         transition.fadeOut(550, () => { location.search = `?level=${levelIndex + 2}`; });
-      }, 1350);
+      }, 1500);
+    } else {
+      // final level: swap the slam for the celebratory win banner (+ Restart).
+      setTimeout(() => { cinematics.clear(); hud.win(); }, 1000);
     }
   });
 
@@ -139,22 +149,105 @@ async function start() {
   }
 
   let simRunning = true;
+
+  // --- INTRO: Fall-Guys-style drop-in -----------------------------------------
+  // The bean hovers above the start while the camera flies over the course (with
+  // the level-name card), then a 3-2-1-GO countdown drops it onto the spawn (the
+  // existing gravity/land/squash/dust/thud do the landing). The sim is frozen
+  // until GO. Headless tools skip the whole thing instantly via skipIntro(),
+  // which is called by step()/testWarp() — so traversal + screenshots are
+  // unaffected (they start from a settled bean at the real spawn).
+  const deckTop = level.deckTop ?? 5;
+  const hoverY = deckTop + 5;          // how high the bean hovers before the drop
+  const fx = built.finishPos.x;        // course length, for the establishing sweep
+  const flyStart = { px: fx * 0.7, py: hoverY + 20, pz: 26, lx: fx * 0.5, ly: deckTop, lz: 0 };
+  const flyEnd = { px: built.spawn.x, py: hoverY + 7.5, pz: built.spawn.z + 11.5, lx: built.spawn.x, ly: hoverY + 1, lz: built.spawn.z };
+  const FLY = 3.0;   // seconds of fly-over before the countdown
+  const STEP = 0.72; // seconds per countdown number
+  let introActive = false, introT = 0, beanBobT = 0, lastCountIdx = -1, cardShown = false;
+  const lerp = (a, b, t) => a + (b - a) * t;
+  const smoothstep = (t) => t * t * (3 - 2 * t);
+
+  function setIntroCam(e) {
+    const a = flyStart, b = flyEnd;
+    camera.position.set(lerp(a.px, b.px, e), lerp(a.py, b.py, e), lerp(a.pz, b.pz, e));
+    camera.lookAt(lerp(a.lx, b.lx, e), lerp(a.ly, b.ly, e), lerp(a.lz, b.lz, e));
+  }
+
+  // Raise the bean to its hover point (bump spawn up, respawn there, restore spawn
+  // so the eventual drop + any later death respawn use the real ground spawn).
+  { const s = player.spawn; const oy = s.y; s.y = hoverY; player.respawn(); s.y = oy; player.syncVisual(); }
+  introActive = true;
+  setIntroCam(0);
+
+  // GO: end the intro and hand the bean to gravity (it falls onto the spawn).
+  function goDrop() {
+    if (!introActive) return;
+    introActive = false;
+    cinematics.hideCard();
+    cinematics.count('GO!', true);
+    events.emit('go');
+    player.object3D.rotation.y = 0;
+    followCam.snap();   // frame the hovering bean, then trail it down as it drops
+    simRunning = true;
+    setTimeout(() => cinematics.clear(), 700);
+  }
+
+  // Skip the intro instantly (headless tools / impatient input) and settle the
+  // bean at the real spawn exactly like the original warm-up did.
+  function skipIntro() {
+    if (!introActive) return;
+    introActive = false;
+    cinematics.clear();
+    player.respawn();
+    player.object3D.rotation.y = 0;
+    for (let i = 0; i < 3; i++) { player.fixedUpdate(FIXED_DT, followCam.yaw()); physics.stepOnce(); player.syncVisual(); }
+    followCam.snap();
+  }
+
+  function introUpdate(dt) {
+    introT += dt;
+    beanBobT += dt;
+    // gentle hover bob + slow turn while we wait
+    player.object3D.position.set(built.spawn.x, hoverY + Math.sin(beanBobT * 2.2) * 0.16, built.spawn.z);
+    player.object3D.rotation.y += dt * 0.5;
+    if (introT < FLY) {
+      setIntroCam(smoothstep(Math.min(1, introT / FLY)));
+      if (!cardShown) { cardShown = true; cinematics.levelCard(`LEVEL ${levelIndex + 1} / ${LEVELS.length}`, level.name); }
+    } else {
+      setIntroCam(1); // hold the final framing through the countdown
+      const idx = Math.floor((introT - FLY) / STEP);
+      if (idx !== lastCountIdx) {
+        lastCountIdx = idx;
+        if (idx === 0) cinematics.hideCard();
+        if (idx <= 2) { cinematics.count(String(3 - idx), false); events.emit('beep', { i: idx }); }
+        else goDrop();
+      }
+    }
+  }
+
   window.__game = {
     scene, camera, physics, player, world, hud, input, followCam, events,
     levelIndex, levelCount: LEVELS.length, levelName: level.name, levelData: level,
     pause() { simRunning = false; },
     resume() { simRunning = true; },
-    step(n = 1) { for (let i = 0; i < n; i++) { simStep(); if (dying) resolveDeath(false); followCam.update(FIXED_DT); } },
+    step(n = 1) { if (introActive) skipIntro(); for (let i = 0; i < n; i++) { simStep(); if (dying) resolveDeath(false); followCam.update(FIXED_DT); } },
     testWarp(x, y, z) {
+      if (introActive) skipIntro();
       const s = player.spawn; const o = { x: s.x, y: s.y, z: s.z };
       s.x = x; s.y = y; s.z = z; player.respawn(); s.x = o.x; s.y = o.y; s.z = o.z;
     },
+    skipIntro,
   };
   window.__ready = true;
   console.log(`[game] ready — level ${levelIndex + 1}/${LEVELS.length} (${level.name})`);
 
   // Reveal the scene with a gentle fade-in once everything is framed.
   transition.fadeIn(500);
+
+  // Let an eager player skip straight to GO with space/enter or a click/tap.
+  window.addEventListener('keydown', (e) => { if (introActive && (e.key === ' ' || e.key === 'Enter')) goDrop(); });
+  window.addEventListener('pointerdown', () => { if (introActive) goDrop(); });
 
   let last = performance.now();
   let acc = 0;
@@ -169,6 +262,9 @@ async function start() {
       while (acc >= FIXED_DT && guard++ < 5) { physics.stepOnce(); ragdoll.update(FIXED_DT); dyingT -= FIXED_DT; acc -= FIXED_DT; }
       followCam.update(dt);
       if (dyingT <= 0) resolveDeath(true);
+    } else if (introActive) {
+      // Intro: fly-over + 3-2-1-GO. No sim until GO (the bean just hovers).
+      introUpdate(dt);
     } else if (simRunning) {
       acc += dt;
       let guard = 0;

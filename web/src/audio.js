@@ -231,6 +231,63 @@ export function createAudio(events) {
     }
   }
 
+  // 'beep': the 3-2-1 countdown ticks. Each tick is a clean blip that climbs in
+  // pitch with the count index (payload.i = 0,1,2) so 3->2->1 rises toward the GO.
+  function playBeep(payload) {
+    if (!ensureCtx()) return;
+    const t = ctx.currentTime;
+    const i = (payload && typeof payload.i === 'number') ? payload.i : 0;
+    const f = 520 * Math.pow(2, i / 3); // ~520 / 655 / 825 Hz — a minor-third climb
+    tone(t, 'square', f, 0.14, 0.16, { attack: 0.004, release: 0.09 });
+    tone(t, 'sine', f * 2, 0.12, 0.05, { attack: 0.004, release: 0.06 }); // glassy top
+  }
+
+  // 'go': the green-light fanfare — a bright rising lead glide over a major triad
+  // stab with a sub and a noise transient, louder/longer than a coin ping.
+  function playGo() {
+    if (!ensureCtx()) return;
+    const t = ctx.currentTime;
+    tone(t, 'square', 1046.5, 0.3, 0.18, { glideTo: 1318.5, attack: 0.004, release: 0.16 }); // C6 -> E6 snap
+    [523.25, 659.25, 783.99].forEach((f) => tone(t, 'triangle', f, 0.32, 0.1, { attack: 0.005, release: 0.18 })); // C5/E5/G5
+    tone(t, 'sine', 261.63, 0.32, 0.08, { attack: 0.006, release: 0.18 }); // C4 sub
+    noiseBurst(t, 0.12, 0.1, 2400); // bright transient for punch
+  }
+
+  // 'whoosh': the screen-wipe swoosh between maps — a band-passed noise sweep
+  // climbing in frequency, like air rushing past as the camera leaves the course.
+  function playWhoosh() {
+    if (!ensureCtx()) return;
+    const buf = getNoiseBuffer();
+    if (!buf) return;
+    const t = ctx.currentTime;
+    const dur = 0.5;
+    const src = ctx.createBufferSource();
+    src.buffer = buf;
+    src.loop = true; // the 0.3s noise loops to fill the sweep
+
+    const bp = ctx.createBiquadFilter();
+    bp.type = 'bandpass';
+    bp.Q.value = 0.9;
+    bp.frequency.setValueAtTime(300, t);
+    bp.frequency.exponentialRampToValueAtTime(4000, t + dur);
+
+    const g = ctx.createGain();
+    g.gain.setValueAtTime(0.0001, t);
+    g.gain.exponentialRampToValueAtTime(0.16, t + dur * 0.4);
+    g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+
+    src.connect(bp);
+    bp.connect(g);
+    g.connect(master);
+    src.start(t);
+    src.stop(t + dur + 0.02);
+    src.onended = () => {
+      try { src.disconnect(); } catch { /* already gone */ }
+      try { bp.disconnect(); } catch { /* already gone */ }
+      try { g.disconnect(); } catch { /* already gone */ }
+    };
+  }
+
   // --- Resume on user gesture ------------------------------------------------
 
   // Browsers start the AudioContext 'suspended' and only allow it to run after a
@@ -275,6 +332,9 @@ export function createAudio(events) {
     unsubscribers.push(events.on('death', playDeath));
     unsubscribers.push(events.on('finish', playFinish));
     unsubscribers.push(events.on('land', playLand));
+    unsubscribers.push(events.on('beep', playBeep));
+    unsubscribers.push(events.on('go', playGo));
+    unsubscribers.push(events.on('whoosh', playWhoosh));
     addGestureListeners();
   }
 

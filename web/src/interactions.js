@@ -85,11 +85,11 @@ export function createInteractions({ physics, player, hud, world, events }) {
         player.setConveyor(null);
       }
 
-      // Finish: celebrate once. Pass the player's position so the confetti
-      // burst pops where they crossed the line.
+      // Finish: fire once. game.js owns the win presentation now (the FINISH
+      // slam banner + level transition, or the final-level win banner), so we
+      // just emit with the crossing position for the confetti burst.
       if (onFinish && !won) {
         won = true;
-        hud.win();
         const t = player.translation();
         emit('finish', { position: { x: t.x, y: t.y, z: t.z } });
       }
