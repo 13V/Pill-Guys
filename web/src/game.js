@@ -118,9 +118,10 @@ async function start() {
     }
   });
 
-  // Level select: number keys jump to a level.
+  // Level select: number keys jump to a level (0 = level 10).
   window.addEventListener('keydown', (e) => {
-    const n = parseInt(e.key, 10);
+    let n = parseInt(e.key, 10);
+    if (e.key === '0') n = 10;
     if (n >= 1 && n <= LEVELS.length) location.search = `?level=${n}`;
   });
 

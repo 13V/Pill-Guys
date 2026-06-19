@@ -21,8 +21,9 @@
 //   Branch 3 (x90..114) : the HARDEST line — SAFE clear strip w/ two 3u gaps | RISKY
 //                          stacks a belt-fed size-4 gauntlet (cx99) AND THEN a 4u
 //                          saw-gap (x107..111, saw in the pit) before landing on hub H.
-//   Branch 4 (x114..126): final sprint — SAFE a clear walk | RISKY a belt-fed size-4
-//                          gauntlet (cx121) right up to the spring deck. Top payout.
+//   Branch 4 (x114..126): final sprint — SAFE a clear walk | RISKY a belt-BOOSTED
+//                          sprint (the pure speed shortcut) right up to the spring
+//                          deck (no lethal over the spring). Top payout.
 // Both lanes rejoin at spring deck J (x119..125); a per-lane spring launches you up
 // the gold victory tower (top 5 -> top 10).
 //
@@ -92,11 +93,10 @@ export default {
     { kind: 'platform', cx: 114, cz: 0, w: 6, d: 6, rails: true, color: 'green' }, // H rejoin hub       x:111..117 (RISKY jumps the 4u saw-gap x107..111 onto it) — cool-green rejoin / final split
     { kind: 'conveyor', cx: 114, cz: 3, len: 6, w: 4, color: 'red' },              // H hub NEAR boost   x:111..117 (risky-only +X off the gap landing; SAFE z-3 untouched) — WARM red boost
 
-    // ===== BRANCH 4 (x117..126): final belt-fed gauntlet sprint (top payout). =====
+    // ===== BRANCH 4 (x117..126): final belt-BOOSTED sprint (the speed shortcut). =====
     { kind: 'strip', x0: 117, x1: 125, z: -3, w: 2, color: 'green' },             // B4 SAFE (far)      x:117..125 clear walk onto spring deck J — COOL green = SAFE lane
-    { kind: 'strip', x0: 117, x1: 127, z:  3, w: 2, color: 'red' },               // B4 RISKY (near)    x:117..127 CONTINUOUS off hub H, gauntlet cx121 on top (runway x117..119+hub, land x123..127) — WARM red = RISKY lane
-    { kind: 'conveyor', cx: 119, cz: 3, len: 4, w: 4, color: 'yellow' },          // B4 RISKY run-up belt  x:117..121 (+X ~12u/s into the final gauntlet leap; ends before spikes x119..123) — WARM boost
-    { kind: 'conveyor', cx: 125, cz: 3, len: 2, w: 4, color: 'yellow' },          // B4 RISKY landing belt x:124..126 (+X ~12u/s off the gauntlet onto the spring deck) — WARM boost
+    { kind: 'strip', x0: 117, x1: 125, z:  3, w: 2, color: 'red' },               // B4 RISKY (near)    x:117..125 clear off hub H, BELT-BOOSTED sprint onto spring deck J (no lethal over the spring) — WARM red = RISKY lane
+    { kind: 'conveyor', cx: 120, cz: 3, len: 6, w: 4, color: 'yellow' },          // B4 RISKY sprint belt  x:117..123 (+X ~12u/s the whole final stretch -> spring deck J) — WARM boost (the risky shortcut)
 
     { kind: 'platform', cx: 122, cz: 0, w: 6, d: 6, color: 'green' },              // J spring deck      x:119..125 (rejoin; per-lane springs -> tower) — cool-green launch pad
     { kind: 'finish', cx: 126, cz: 0, w: 6, d: 6, top: 10, color: 'yellow' },      // finish tower (w6 so every lane lands)  x:123..129 — celebratory gold victory tower
@@ -113,14 +113,12 @@ export default {
     { kind: 'sawblade', cx: 68, cz: 3, lethal: true },                // B2: saw spinning IN the 4u gap pit (x66..70) on the z=3 line — the GAP is the threat
     { kind: 'spikes', cx: 99, cz: 3, size: 4 },                       // B3 gauntlet (runway x93..97, land x101..107) — LETHAL on-line, JUMP it
     { kind: 'sawblade', cx: 109, cz: 3, lethal: true },               // B3: saw spinning IN the trailing 4u gap pit (x107..111) — the GAP is the threat
-    { kind: 'spikes', cx: 121, cz: 3, size: 4 },                      // B4 gauntlet (runway x117..119+hub, land x123..127) — LETHAL on-line, JUMP it
 
     // Warning cones (decorative): flag each RISKY lane's on-the-line hazards.
     { kind: 'cone', cx: 26.5, cz: 3 }, { kind: 'cone', cx: 31.5, cz: 3 },  // B1 gauntlet edges
     { kind: 'cone', cx: 65.5, cz: 3 }, { kind: 'cone', cx: 70.5, cz: 3 },  // B2 saw-gap jump edges
     { kind: 'cone', cx: 96.5, cz: 3 }, { kind: 'cone', cx: 101.5, cz: 3 }, // B3 gauntlet edges
     { kind: 'cone', cx: 106.5, cz: 3 }, { kind: 'cone', cx: 111.0, cz: 3 },// B3 saw-gap jump edges
-    { kind: 'cone', cx: 118.5, cz: 3 }, { kind: 'cone', cx: 123.5, cz: 3 },// B4 gauntlet edges
 
     // =========================================================================
     // CHAOS DECOR — animated `menace`, NO lethal flag (no death box, never blocks).
@@ -290,11 +288,11 @@ export default {
 
     { x: 114, y: 6.4, z: 0 },   // H rejoin / final split hub
 
-    // Branch 4 (final belt-fed gauntlet)  — safe 1 / risky 3
+    // Branch 4 (final belt-boosted sprint)  — safe 1 / risky 3
     { x: 121, y: 6.4, z: -3 },  // safe lane (clear)
     { x: 118, y: 6.4, z: 3 },   // risky entry
-    { x: 121, y: 7.0, z: 3 },   // risky: arc over the final gauntlet (reward)
-    { x: 125, y: 6.4, z: 3 },   // risky landing                  (reward)
+    { x: 121, y: 6.4, z: 3 },   // risky: mid-sprint               (reward)
+    { x: 124, y: 6.4, z: 3 },   // risky landing                  (reward)
 
     { x: 122, y: 6.4, z: 0 },   // J spring deck — "you made it" coin before the climb
     { x: 126, y: 11.4, z: 0 },  // atop the victory tower
