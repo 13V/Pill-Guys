@@ -7,11 +7,13 @@
     "dev": "vite",
     "build": "vite build",
     "preview": "vite preview",
-    "render": "node render.mjs"
+    "render": "node render.mjs",
+    "relay": "node server/relay.mjs"
   },
   "dependencies": {
     "@dimforge/rapier3d-compat": "^0.19.3",
-    "three": "^0.171.0"
+    "three": "^0.171.0",
+    "ws": "^8.21.0"
   },
   "devDependencies": {
     "puppeteer": "^23.11.1",

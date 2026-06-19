@@ -15,6 +15,8 @@ import { createCoinJuice } from './effects/coins.js';
 import { createRagdoll } from './effects/ragdoll.js';
 import { createTransition } from './effects/transition.js';
 import { createCinematics } from './effects/cinematics.js';
+import { createNet } from './net.js';
+import { createRemotePlayers } from './effects/remotePlayers.js';
 import { createAura } from './effects/aura.js';
 import { createPet } from './pet.js';
 import { cosmetics } from './cosmetics.js';
@@ -26,6 +28,14 @@ async function start() {
   const params = new URLSearchParams(location.search);
   const levelIndex = Math.max(0, Math.min(LEVELS.length - 1, (parseInt(params.get('level'), 10) || 1) - 1));
   const level = LEVELS[levelIndex];
+
+  // Multiplayer is opt-in via ?mp=<ws-url|1>&room=CODE. Absent -> pure single
+  // player (headless tests never pass ?mp=, so they're entirely unaffected).
+  const mpParam = params.get('mp');
+  const mpUrl = mpParam === '1' ? `ws://${location.hostname}:8787` : mpParam;
+  const mpRoom = params.get('room') || 'public';
+  let net = null;
+  let remotePlayers = null;
 
   const { scene, camera, renderer, controls } = createScene();
   if (controls) controls.enabled = false;
@@ -114,6 +124,7 @@ async function start() {
   events.on('finish', () => {
     if (advancing) return;
     advancing = true;
+    if (net) net.sendFinish();
     cinematics.slam('FINISH!', `${level.name} — clear!`);
     simRunning = false;
     cosmetics.addCoins((hud.coins || 0) + 100);
@@ -205,6 +216,17 @@ async function start() {
     followCam.snap();
   }
 
+  // Multiplayer: drop the local bean onto its assigned spawn SLOT so the pack
+  // starts spread across the line. Re-hovers in place if the intro's still up.
+  function placeLocalAtSlot(slot) {
+    const list = built.spawns;
+    if (!list || !list.length) return;
+    const s = list[slot % list.length];
+    player.spawn.x = s.x; player.spawn.z = s.z; // y stays the ground spawn height
+    if (introActive) { const oy = player.spawn.y; player.spawn.y = hoverY; player.respawn(); player.spawn.y = oy; player.syncVisual(); }
+    else { player.respawn(); followCam.snap(); }
+  }
+
   function introUpdate(dt) {
     introT += dt;
     beanBobT += dt;
@@ -226,8 +248,27 @@ async function start() {
     }
   }
 
+  // --- Multiplayer wiring (opt-in; connects asynchronously) ---
+  if (mpUrl) {
+    remotePlayers = createRemotePlayers(scene);
+    const mpTag = document.createElement('div');
+    mpTag.style.cssText = 'position:fixed;top:44px;left:12px;z-index:1100;font:700 12px "Baloo 2",system-ui,sans-serif;color:#10243f;background:rgba(255,255,255,0.88);border:2px solid #74ec6a;border-radius:12px;padding:4px 10px;pointer-events:none;user-select:none;';
+    mpTag.textContent = '· connecting…';
+    document.body.appendChild(mpTag);
+    const refreshTag = () => { mpTag.textContent = `🟢 ${remotePlayers.count() + 1} in race`; };
+    net = createNet({
+      url: mpUrl, room: mpRoom, level: levelIndex + 1,
+      skin: equipped.skin, name: 'Bean' + Math.floor(Math.random() * 900 + 100),
+      onWelcome: (m) => { placeLocalAtSlot(m.slot); for (const pe of m.peers) remotePlayers.add(pe.id, pe.skin, pe.name, pe.p, pe.r); refreshTag(); },
+      onJoin: (m) => { remotePlayers.add(m.id, m.skin, m.name, m.p, m.r); refreshTag(); },
+      onState: (m) => { remotePlayers.setState(m.id, m.p, m.r, m.m); },
+      onLeave: (m) => { remotePlayers.remove(m.id); refreshTag(); },
+    });
+    setTimeout(() => { if (net && !net.connected) mpTag.textContent = '⚠ no server (run: npm run relay)'; }, 4000);
+  }
+
   window.__game = {
-    scene, camera, physics, player, world, hud, input, followCam, events,
+    scene, camera, physics, player, world, hud, input, followCam, events, net, remotePlayers,
     levelIndex, levelCount: LEVELS.length, levelName: level.name, levelData: level,
     pause() { simRunning = false; },
     resume() { simRunning = true; },
@@ -276,6 +317,13 @@ async function start() {
     coinJuice.update(dt);
     aura.update(dt);
     pet.update(dt, player.translation(), followCam.yaw());
+    if (net) {
+      const t = player.translation();
+      const v = player.getVelocity ? player.getVelocity() : { x: 0, z: 0 };
+      net.setState(t, player.object3D.rotation.y, player.grounded && Math.hypot(v.x, v.z) > 1);
+      net.update(dt);
+      remotePlayers.update(dt);
+    }
     renderer.render(scene, camera);
     requestAnimationFrame(frame);
   }

@@ -91,6 +91,55 @@ export async function buildLevel(level, { scene, physics }) {
     }
   }
 
+  // ---- START PAD (widened starting LINE) + spawn grid ------------------------
+  // For a Fall-Guys-style pack we widen the spawn hub across Z (perpendicular to
+  // the +X run) into a starting line and lay a grid of spawn SLOTS on it. Only the
+  // START is widened (per design) — the lane courses past it are untouched. It's
+  // derived generically from the hub deck, so no level data changes. Single-player
+  // still uses level.spawn; multiplayer assigns built.spawns[slot].
+  const spawns = [];
+  const sp0 = level.spawn || { x: level.decks?.[0]?.cx ?? 3, y: deckTopDefault + 1.2, z: 0 };
+  const spx = sp0.x, spz = sp0.z ?? 0;
+  const startHub = (level.decks || []).find((d) => d.kind === 'platform'
+    && spx >= d.cx - d.w / 2 - 0.5 && spx <= d.cx + d.w / 2 + 0.5
+    && spz >= d.cz - d.d / 2 - 0.5 && spz <= d.cz + d.d / 2 + 0.5);
+  const START_PAD_DEPTH = 16; // Z extent of the widened starting line
+
+  function fillSpawnGrid(cx, cz, w, d, top) {
+    // ranks ALONG X (staggered a little back from the line), columns ACROSS Z.
+    const rows = w >= 6 ? 3 : 2;
+    const usableX = Math.max(w - 2.4, 0.001), usableZ = Math.max(d - 2, 1);
+    const y = top + 1.2;
+    const cols = Math.max(2, Math.floor(usableZ / 1.8) + 1);
+    for (let ci = 0; ci < cols; ci++) {
+      const z = cz - usableZ / 2 + (usableZ * ci) / (cols - 1);
+      for (let ri = 0; ri < rows; ri++) {
+        const x = cx - usableX / 2 + (rows === 1 ? usableX / 2 : (usableX * ri) / (rows - 1));
+        spawns.push({ x, y, z });
+      }
+    }
+  }
+
+  function buildStartPad(dk) {
+    const top = dk.top ?? deckTopDefault;
+    const base = DECK_BASE_TO_FLOOR(top);
+    const col = dk.color || color;
+    const w = dk.w || 6;
+    const cz0 = dk.cz ?? 0;
+    // tile fixed-size platform pieces across Z to reach START_PAD_DEPTH (no custom
+    // wide asset exists; 6x2 tiles fill any depth, 4x4 for w=4 hubs). No interior
+    // rails so the starting line reads open.
+    const pieceZ = w === 4 ? 4 : 2;
+    const pieceName = w === 4 ? 'platform_4x4x1' : 'platform_6x2x1';
+    const n = Math.max(1, Math.round(START_PAD_DEPTH / pieceZ));
+    const fullD = n * pieceZ;
+    for (let i = 0; i < n; i++) P([pieceName, col, dk.cx, cz0 - fullD / 2 + pieceZ / 2 + i * pieceZ, base]);
+    solid(dk.cx, top, cz0, w / 2, fullD / 2, top); // one collider for the whole pad
+    for (let i = 0; i <= n; i += Math.max(1, Math.floor(n / 4))) addLegs(dk.cx, cz0 - fullD / 2 + i * pieceZ, w, pieceZ, base);
+    noteX(dk.cx - w / 2); noteX(dk.cx + w / 2);
+    fillSpawnGrid(dk.cx, cz0, w, fullD, top);
+  }
+
   // ---- DECKS ----
   for (const dk of level.decks || []) {
     const top = dk.top ?? deckTopDefault;
@@ -98,6 +147,7 @@ export async function buildLevel(level, { scene, physics }) {
     const col = dk.color || color;
 
     if (dk.kind === 'platform') {
+      if (dk === startHub) { buildStartPad(dk); continue; }
       const w = dk.w, d = dk.d;
       P([`platform_${w}x${d}x1`, col, dk.cx, dk.cz, base]);
       solid(dk.cx, top, dk.cz, w / 2, d / 2, top); // collider down to floor
@@ -263,8 +313,12 @@ export async function buildLevel(level, { scene, physics }) {
 
   await Promise.all(tasks);
 
+  // Fallback grid if the spawn wasn't on a recognised hub (so multiplayer still
+  // has slots to spread across, just without the widening).
+  if (spawns.length === 0) fillSpawnGrid(spx, spz, 5, 5, (sp0.y ?? deckTopDefault + 1.2) - 1.2);
+
   const spawn = level.spawn || { x: (level.decks?.[0]?.cx ?? 3), y: deckTopDefault + 1.2, z: 0 };
-  return { group, spawn, coins, finishPos: finishCenter || { x: maxX, y: deckTopDefault + 1, z: 0 }, lengthX: maxX - minX };
+  return { group, spawn, spawns, coins, finishPos: finishCenter || { x: maxX, y: deckTopDefault + 1, z: 0 }, lengthX: maxX - minX };
 }
 
 // Bright self-lit collectible so coin-juice can just flip .visible on collect.

@@ -156,6 +156,7 @@ export function createLobbyUI(opts = {}) {
     onEquip = () => {},
     onBuy = () => {},
     onPlay = () => {},
+    onPlayOnline = () => {},
     onTab = () => {},
   } = opts;
 
@@ -533,6 +534,22 @@ export function createLobbyUI(opts = {}) {
   playBtn.addEventListener('click', () => {
     try { onPlay(); } catch (_) { /* host callback errors are non-fatal */ }
   });
+
+  // Secondary "Play Online" CTA (multiplayer) sitting to the left of PLAY.
+  const onlineBtn = document.createElement('button');
+  onlineBtn.type = 'button';
+  onlineBtn.className = 'pgl-btn';
+  Object.assign(onlineBtn.style, {
+    cursor: 'pointer', alignSelf: 'center', marginRight: '16px',
+    border: `3px solid ${C.white}`, borderRadius: '20px', padding: '13px 26px',
+    background: 'linear-gradient(180deg, #9bf08f 0%, #5fd070 55%, #34a64a 100%)',
+    color: C.ink, fontFamily: 'inherit', fontWeight: '800', fontSize: '20px', letterSpacing: '0.5px',
+    boxShadow: '0 7px 0 rgba(28,122,46,0.9), 0 12px 22px rgba(16,36,63,0.32)',
+  });
+  onlineBtn.textContent = '🌐 Play Online';
+  onlineBtn.addEventListener('click', () => { try { onPlayOnline(); } catch (_) { /* non-fatal */ } });
+
+  playRow.appendChild(onlineBtn);
   playWrap.appendChild(playBtn);
   playRow.appendChild(playWrap);
   panel.appendChild(playRow);

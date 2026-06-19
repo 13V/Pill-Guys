@@ -132,6 +132,7 @@ function start() {
       else ui.flashUnaffordable(item.id);
     },
     onPlay: () => { location.href = 'game.html?level=1'; },
+    onPlayOnline: () => { location.href = 'game.html?level=1&mp=1'; },
     onTab: () => {},
   });
 
