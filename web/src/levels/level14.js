@@ -12,15 +12,19 @@
 //
 // "BUOY OH BUOY" IDENTITY — varied seaside challenge across the four splits so the
 // finale never repeats itself, themed for the tide:
-//   SPLIT 1  B (x23..38)  REEF GAUNTLET — SAFE clear plank / RISKY belt-fed size-4
-//            "coral" spike gauntlet (cx29, 4u runway x23..27 + 7u landing x31..38).
+//   SPLIT 1  B (x23..38)  REEF GAUNTLET — SAFE clear plank / RISKY size-4 "coral"
+//            spike gauntlet (cx29; 4u FLAT runway x23..27 + 3u FLAT landing x31..34;
+//            run-up belt ENDS at x23 / landing belt STARTS at x34 so neither feeds the spikes).
 //   SPLIT 2  D (x61..76)  TIDE GAP      — SAFE comfy 3u gap (x66..69) / RISKY a 4u
 //            gap (x66..70) over an "anchor saw" spinning IN the pit on the z=3 line.
 //   SPLIT 3  G (x99..114) WHIRLPOOL     — SAFE clear plank / RISKY 4u jump-gap
-//            (x103..107) over a saw spinning in the whirlpool pit; belt run-up/landing.
+//            (x103..107) over a saw spinning in the whirlpool pit; run-up belt ENDS
+//            at x101 (2u FLAT takeoff x101..103) / landing belt STARTS at x110 (3u
+//            FLAT landing x107..110) so neither over-feeds the saw-gap leap.
 //   SPLIT 4  H (x123..134) RIPTIDE RUN  — the signature finish: SAFE clear plank /
-//            RISKY a belt-BOOSTED "riptide" sprint over a size-4 gauntlet (cx129,
-//            4u runway x123..127 + 3u landing x131..134) onto the spring deck.
+//            RISKY a belt-BOOSTED "riptide" sprint over a size-4 gauntlet (cx129;
+//            4u FLAT runway x123..127 + 3u FLAT landing x131..134; run-up belt ENDS at
+//            x123 so it never feeds the spikes — the slingshot belt waits on buoy J).
 // Spring deck J (x134..140) fires WHICHEVER lane up the lighthouse victory tower (top 10).
 //
 // SIGNATURE GIMMICK — the RIPTIDE: split 4's whole risky lane sits on ONE long forward
@@ -67,9 +71,9 @@ export default {
     { kind: 'platform', cx: 17, cz: 0, w: 6, d: 6, rails: true, color: 'yellow' },   // B split buoy       x:14..20  — bright first decision buoy
     { kind: 'conveyor', cx: 17, cz: 3, len: 4, w: 4, color: 'red' },                 // B buoy NEAR boost  x:15..19  (cz3 -> z1..5: risky-only +X; SAFE z-3 untouched) — WARM coral boost
     { kind: 'strip', x0: 23, x1: 38, z: -3, w: 2, color: 'blue' },                   // B1 SAFE plank (far) x:23..38 CONTINUOUS, clear (3u hop off the buoy x20->23) — COOL aqua = SAFE
-    { kind: 'strip', x0: 23, x1: 38, z:  3, w: 2, color: 'red' },                    // B1 RISKY reef (near) x:23..38 CONTINUOUS, coral gauntlet cx29 (runway x23..27, land x31..38) — WARM coral = RISKY
-    { kind: 'conveyor', cx: 25, cz: 3, len: 4, w: 4, color: 'yellow' },              // B1 RISKY run-up belt x:23..27 (+X ~12u/s into the gauntlet leap; ends before spikes x27..31)
-    { kind: 'conveyor', cx: 35, cz: 3, len: 4, w: 4, color: 'yellow' },              // B1 RISKY landing belt x:33..37 (+X ~12u/s off the gauntlet -> buoy C)
+    { kind: 'strip', x0: 23, x1: 38, z:  3, w: 2, color: 'red' },                    // B1 RISKY reef (near) x:23..38 CONTINUOUS solid deck, coral gauntlet cx29 (death cells x27..31; FLAT runway x23..27, FLAT landing x31..34) — WARM coral = RISKY
+    { kind: 'conveyor', cx: 21, cz: 3, len: 4, w: 4, color: 'yellow' },              // B1 RISKY run-up belt x:19..23 (+X ~12u/s off buoy B into the lane; ENDS at x23 so the takeoff x~26.1 sits on FLAT strip — never belt-fed into the gauntlet)
+    { kind: 'conveyor', cx: 36, cz: 3, len: 4, w: 4, color: 'yellow' },              // B1 RISKY landing belt x:34..38 (+X ~12u/s; STARTS at x34 so x31..34 is FLAT landing deck after the gauntlet -> buoy C)
 
     { kind: 'platform', cx: 41, cz: 0, w: 6, d: 6, rails: true, color: 'green' },     // C rejoin buoy      x:38..44  (both lane planks x38 edge touch it) — teal rejoin breather
     { kind: 'conveyor', cx: 48, cz: 0, len: 8, w: 6, color: 'blue' },                // M2 tide belt (+X), w6 spans both lanes  x:44..52  — COOL blue shared current
@@ -91,10 +95,10 @@ export default {
     { kind: 'platform', cx: 93, cz: 0, w: 6, d: 6, rails: true, color: 'yellow' },   // G split buoy       x:90..96  — bright mid decision buoy
     { kind: 'conveyor', cx: 93, cz: 3, len: 4, w: 4, color: 'red' },                 // G buoy NEAR boost  x:91..95  (risky-only +X; SAFE z-3 untouched) — WARM coral boost
     { kind: 'strip', x0: 99, x1: 114, z: -3, w: 2, color: 'blue' },                  // B3 SAFE plank (far) x:99..114 CONTINUOUS, clear onto buoy H (3u hop x96->99) — COOL aqua = SAFE
-    { kind: 'strip', x0: 99, x1: 103, z:  3, w: 2, color: 'red' },                   // B3 RISKY seg1 (near) x:99..103 (saw spins in the 4u whirlpool gap ahead) — WARM coral = RISKY
-    { kind: 'strip', x0: 107, x1: 114, z:  3, w: 2, color: 'red' },                  // B3 RISKY seg2 (near) x:107..114 (after a 4u whirlpool saw-gap x103..107) — WARM coral = RISKY
-    { kind: 'conveyor', cx: 101, cz: 3, len: 4, w: 4, color: 'yellow' },             // B3 RISKY run-up belt x:99..103 (+X ~12u/s into the 4u saw-gap leap x103..107)
-    { kind: 'conveyor', cx: 109, cz: 3, len: 4, w: 4, color: 'yellow' },             // B3 RISKY landing belt x:107..111 (+X ~12u/s off the whirlpool gap -> buoy H)
+    { kind: 'strip', x0: 99, x1: 103, z:  3, w: 2, color: 'red' },                   // B3 RISKY seg1 (near) x:99..103 (FLAT takeoff x101..103 after the run-up belt ends; saw spins in the 4u whirlpool gap ahead) — WARM coral = RISKY
+    { kind: 'strip', x0: 107, x1: 114, z:  3, w: 2, color: 'red' },                  // B3 RISKY seg2 (near) x:107..114 (after a 4u whirlpool saw-gap x103..107; FLAT landing x107..110 before the landing belt starts) — WARM coral = RISKY
+    { kind: 'conveyor', cx: 99, cz: 3, len: 4, w: 4, color: 'yellow' },              // B3 RISKY run-up belt x:97..101 (+X ~12u/s off buoy G; ENDS at x101 so seg1's x101..103 is a 2u FLAT (non-belt) takeoff strip — the saw-gap leap fires at x~102.4 from base 8u/s, NOT over-sped, and the controlled arc clears the saw box x103.4..106.6)
+    { kind: 'conveyor', cx: 112, cz: 3, len: 4, w: 4, color: 'yellow' },             // B3 RISKY landing belt x:110..114 (+X ~12u/s -> buoy H; STARTS at x110 so seg2's x107..110 is a 3u FLAT landing strip right after the gap — the bot lands at x~109-110 on FLAT deck, never belt-over-fed at the landing edge)
 
     { kind: 'platform', cx: 117, cz: 0, w: 6, d: 6, rails: true, color: 'green' },    // H rejoin/final-split buoy x:114..120 (both lanes land; entry split 4) — teal final breather
     { kind: 'conveyor', cx: 117, cz: 3, len: 4, w: 4, color: 'red' },                // H buoy NEAR boost  x:115..119 (risky-only +X into the riptide; SAFE z-3 untouched) — WARM coral boost
@@ -102,8 +106,8 @@ export default {
     // ===================== SPLIT 4 — H (x123..134): RIPTIDE RUN (signature) =====================
     { kind: 'strip', x0: 123, x1: 134, z: -3, w: 2, color: 'green' },                // B4 SAFE plank (far) x:123..134 CONTINUOUS, clear walk onto spring deck J (3u hop x120->123) — COOL teal = SAFE
     { kind: 'strip', x0: 123, x1: 134, z:  3, w: 2, color: 'red' },                  // B4 RISKY reef (near) x:123..134 CONTINUOUS off buoy H, RIPTIDE-boosted, coral gauntlet cx129 (runway x123..127, land x131..134) — WARM coral = RISKY
-    { kind: 'conveyor', cx: 125, cz: 3, len: 4, w: 4, color: 'yellow' },             // B4 RIPTIDE run-up belt x:123..127 (+X ~12u/s into the final gauntlet leap; ends before spikes x127..131)
-    { kind: 'conveyor', cx: 132.5, cz: 3, len: 3, w: 4, color: 'yellow' },           // B4 RIPTIDE landing belt x:131..134 (+X ~12u/s off the gauntlet -> spring deck J) — the slingshot
+    { kind: 'conveyor', cx: 121, cz: 3, len: 4, w: 4, color: 'yellow' },             // B4 RIPTIDE run-up belt x:119..123 (+X ~12u/s off buoy H into the lane; ENDS at x123 so the takeoff x~126.1 sits on FLAT strip — never belt-fed into the final gauntlet)
+    { kind: 'conveyor', cx: 136.5, cz: 3, len: 4, w: 4, color: 'yellow' },           // B4 RIPTIDE slingshot belt x:134.5..138.5 — sits on buoy J's NEAR half (cz3 -> z1..5; SAFE z-3 + center spring untouched), +X ~12u/s across the launch buoy onto the J spring. Starts past x134 so the gauntlet landing x131..134 stays FLAT deck — the signature riptide payoff, moved off the takeoff/landing
 
     // ===================== SPRING DECK + LIGHTHOUSE VICTORY TOWER =====================
     { kind: 'platform', cx: 137, cz: 0, w: 6, d: 6, color: 'green' },                // J launch buoy      x:134..140 (rejoin 4; per-lane springs -> tower; both lane planks x134 edge touch it) — teal launch pad
@@ -118,10 +122,10 @@ export default {
     // SAFE (z=-3) lanes & the shared buoy-hubs are always clear. NOTHING lethal touches
     // a walkable lane except these, so autoplay clears every lane at 0 deaths.
     // =========================================================================
-    { kind: 'spikes', cx: 29, cz: 3, size: 4 },                        // SPLIT1 B1 coral gauntlet (runway x23..27, land x31..38) — LETHAL on-line, JUMP it
+    { kind: 'spikes', cx: 29, cz: 3, size: 4 },                        // SPLIT1 B1 coral gauntlet — death cells x27..31; FLAT runway x23..27 + FLAT landing x31..34 — LETHAL on-line, JUMP it
     { kind: 'sawblade', cx: 68, cz: 3, lethal: true },                 // SPLIT2 B2: anchor saw IN the 4u gap pit (x66..70) on the z=3 line — leap it
-    { kind: 'sawblade', cx: 105, cz: 3, lethal: true },                // SPLIT3 B3: saw IN the 4u whirlpool gap pit (x103..107) on the z=3 line — leap it
-    { kind: 'spikes', cx: 129, cz: 3, size: 4 },                       // SPLIT4 B4 coral gauntlet (runway x123..127, land x131..134) — LETHAL on-line, JUMP it
+    { kind: 'sawblade', cx: 105, cz: 3, lethal: true },                // SPLIT3 B3: saw IN the 4u whirlpool gap pit (x103..107) on the z=3 line; death box x103.4..106.6 — FLAT takeoff x101..103 + FLAT landing x107..110, run-up belt ENDS x101 / landing belt STARTS x110 so it's not belt-fed — leap it
+    { kind: 'spikes', cx: 129, cz: 3, size: 4 },                       // SPLIT4 B4 coral gauntlet — death cells x127..131; FLAT runway x123..127 + FLAT landing x131..134 — LETHAL on-line, JUMP it
 
     // Warning cones (DECORATIVE — no death box): flag each risky on-the-line gate.
     { kind: 'cone', cx: 26.5, cz: 3 }, { kind: 'cone', cx: 31.5, cz: 3 },   // B1 gauntlet edges
