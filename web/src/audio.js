@@ -1,10 +1,13 @@
 // AUDIO — synthesized sound effects via WebAudio. Owned by the AUDIO agent.
 //
-// export function createAudio(events) -> { resume(), dispose() }
+// export function createAudio(events) -> { resume(), dispose(), setAmbient(on), setMusic(on) }
 //   Subscribe to gameplay events and play short, pleasant synthesized SFX (no asset
 //   files): 'jump' (rising blip), 'coin' (bright two-note ping), 'spring' (boing),
 //   'death' (descending buzz/thud), 'finish' (little victory arpeggio),
-//   'land' (soft low thud/plop, scaled by landing strength).
+//   'land' (soft low thud/plop, scaled by landing strength), 'splash' (watery plop).
+//   Plus two long-lived beds: a soft looping ocean "ambient" wash (on by default
+//   once the context resumes) and a quiet upbeat "music" loop (OFF by default),
+//   each toggled via setAmbient(on) / setMusic(on).
 //   Lazily create one AudioContext; browsers block audio until a user gesture, so
 //   resume() the context on the first keydown/pointerdown (add a one-shot listener).
 //   Use oscillators + gain envelopes (and noise for death). Keep master volume modest
@@ -23,6 +26,18 @@ export function createAudio(events) {
   let master = null;     // master gain node, sits in front of the destination
   let noiseBuffer = null; // shared short white-noise buffer (for the death thump)
   let disposed = false;
+
+  // --- Ambient + music bed state --------------------------------------------
+  // The ambient ocean wash and the (default-off) music bed are long-lived graphs
+  // rather than fire-and-forget SFX, so we hold references to tear them down.
+  let ambientNodes = null;   // { src, lfoCut, lfoGain, ... } once started
+  let ambientStarted = false; // guards the one-time auto-start from resume()
+  let ambientOn = true;       // desired on/off state (default on once resumed)
+  let musicNodes = null;     // { gain } — the music bus while playing
+  let musicTimer = null;     // setInterval handle for the lookahead scheduler
+  let musicNextNoteTime = 0; // next note's absolute ctx time to schedule
+  let musicStep = 0;         // index into the progression
+  let musicOn = false;       // desired on/off state (default OFF)
 
   // --- AudioContext lifecycle ------------------------------------------------
 
@@ -288,17 +303,283 @@ export function createAudio(events) {
     };
   }
 
+  // 'splash': a short, gentle watery plop — a band-passed noise blip whose cutoff
+  // opens then snaps closed (the "ploonk" of water) plus a low descending sine
+  // "bloop" (~300 -> 140Hz). Kept brief (~0.25s) and soft.
+  function playSplash() {
+    if (!ensureCtx()) return;
+    const buf = getNoiseBuffer();
+    const t = ctx.currentTime;
+    const dur = 0.25;
+
+    // Watery noise transient: bandpass that rises then falls so the cutoff
+    // "opens then closes", giving the rounded plop character.
+    if (buf) {
+      const src = ctx.createBufferSource();
+      src.buffer = buf; // 0.3s buffer fully covers the 0.25s plop, no loop needed
+
+      const bp = ctx.createBiquadFilter();
+      bp.type = 'bandpass';
+      bp.Q.value = 1.2;
+      bp.frequency.setValueAtTime(400, t);
+      bp.frequency.exponentialRampToValueAtTime(1100, t + 0.05); // open
+      bp.frequency.exponentialRampToValueAtTime(250, t + dur);   // then close
+
+      const g = ctx.createGain();
+      g.gain.setValueAtTime(0.0001, t);
+      g.gain.exponentialRampToValueAtTime(0.12, t + 0.02);
+      g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+
+      src.connect(bp);
+      bp.connect(g);
+      g.connect(master);
+      src.start(t);
+      src.stop(t + dur + 0.02);
+      src.onended = () => {
+        try { src.disconnect(); } catch { /* already gone */ }
+        try { bp.disconnect(); } catch { /* already gone */ }
+        try { g.disconnect(); } catch { /* already gone */ }
+      };
+    }
+
+    // Low descending sine "bloop" underneath — the body of the plop.
+    tone(t, 'sine', 300, 0.2, 0.1, { glideTo: 140, attack: 0.005, release: 0.08 });
+  }
+
+  // --- Ambient sea bed -------------------------------------------------------
+
+  // A soft, continuous ocean wash: looped white noise through a lowpass whose
+  // cutoff and overall gain are slowly modulated by two slow LFOs so it swells
+  // and recedes like surf. Very low level. Idempotent — calling it while already
+  // running is a no-op.
+  function startAmbient() {
+    if (!ensureCtx() || ambientNodes) return;
+    const buf = getNoiseBuffer();
+    if (!buf) return;
+    const t = ctx.currentTime;
+
+    // Looped noise source is the raw "water".
+    const src = ctx.createBufferSource();
+    src.buffer = buf;
+    src.loop = true;
+
+    // Lowpass shapes it into a dull wash; its cutoff is LFO-modulated.
+    const lp = ctx.createBiquadFilter();
+    lp.type = 'lowpass';
+    lp.frequency.value = 650; // base cutoff, ~500-900Hz once modulated
+    lp.Q.value = 0.3;
+
+    // Slow LFO #1 -> filter cutoff: opens/closes the wash (~0.07Hz).
+    const lfoCut = ctx.createOscillator();
+    lfoCut.type = 'sine';
+    lfoCut.frequency.value = 0.07;
+    const lfoCutAmt = ctx.createGain();
+    lfoCutAmt.gain.value = 220; // cutoff swings ~650 +/- 220Hz
+    lfoCut.connect(lfoCutAmt);
+    lfoCutAmt.connect(lp.frequency);
+
+    // Body gain, fading in so the bed doesn't pop in.
+    const g = ctx.createGain();
+    const peak = 0.06; // ~0.06 of master — very soft
+    g.gain.setValueAtTime(0.0001, t);
+    g.gain.exponentialRampToValueAtTime(peak, t + 2.0);
+
+    // Slow LFO #2 -> a second gain stage: the surf "swell" (~0.13Hz).
+    const swell = ctx.createGain();
+    swell.gain.value = 1.0;
+    const lfoGain = ctx.createOscillator();
+    lfoGain.type = 'sine';
+    lfoGain.frequency.value = 0.13;
+    const lfoGainAmt = ctx.createGain();
+    lfoGainAmt.gain.value = 0.5; // swells between ~0.5x and ~1.5x
+    lfoGain.connect(lfoGainAmt);
+    lfoGainAmt.connect(swell.gain);
+
+    src.connect(lp);
+    lp.connect(g);
+    g.connect(swell);
+    swell.connect(master);
+
+    src.start(t);
+    lfoCut.start(t);
+    lfoGain.start(t);
+
+    ambientNodes = { src, lp, lfoCut, lfoCutAmt, g, swell, lfoGain, lfoGainAmt };
+  }
+
+  // Tear down the ambient bed, fading out briefly to avoid a click.
+  function stopAmbient() {
+    if (!ambientNodes) return;
+    const n = ambientNodes;
+    ambientNodes = null;
+    const now = ctx ? ctx.currentTime : 0;
+    try {
+      if (ctx) {
+        n.g.gain.cancelScheduledValues(now);
+        n.g.gain.setValueAtTime(Math.max(0.0001, n.g.gain.value), now);
+        n.g.gain.exponentialRampToValueAtTime(0.0001, now + 0.3);
+      }
+    } catch { /* ignore */ }
+    const stopAt = now + 0.35;
+    for (const node of [n.src, n.lfoCut, n.lfoGain]) {
+      try { node.stop(stopAt); } catch { /* may already be stopped */ }
+    }
+    // Disconnect once the sources have stopped.
+    const cleanup = () => {
+      for (const node of [n.src, n.lp, n.lfoCut, n.lfoCutAmt, n.g, n.swell, n.lfoGain, n.lfoGainAmt]) {
+        try { node.disconnect(); } catch { /* already gone */ }
+      }
+    };
+    try { n.src.onended = cleanup; } catch { cleanup(); }
+  }
+
+  // --- Music bed -------------------------------------------------------------
+
+  // An upbeat, simple looping progression on a mellow synth. QUIET and DEFAULT
+  // OFF. Scheduled with a lookahead: a setInterval wakes ~every 25ms and queues
+  // any notes due within the next ~100ms using absolute ctx times, so playback
+  // stays sample-accurate regardless of timer jitter.
+  //
+  // Progression: I–V–vi–IV in C major (C, G, Am, F), one bar each. Each bar is a
+  // gentle root-position arpeggio plus a soft pad root.
+  const MUSIC_BPM = 112;
+  const MUSIC_PROG = [
+    [261.63, 329.63, 392.0, 523.25], // C  (C4 E4 G4 C5)
+    [392.0, 493.88, 587.33, 784.0],  // G  (G4 B4 D5 G5)
+    [220.0, 261.63, 329.63, 440.0],  // Am (A3 C4 E4 A4)
+    [349.23, 440.0, 523.25, 698.46], // F  (F4 A4 C5 F5)
+  ];
+
+  function scheduleMusicStep() {
+    if (!ctx || !musicNodes) return;
+    const beat = 60 / MUSIC_BPM;       // seconds per beat
+    const eighth = beat / 2;           // arpeggio note spacing
+    const bar = musicNextNoteTime;
+    const chord = MUSIC_PROG[musicStep % MUSIC_PROG.length];
+    const dest = musicNodes.gain;
+
+    // Four eighth-note arpeggio plucks across the bar (up the chord).
+    for (let i = 0; i < chord.length; i++) {
+      tone(bar + i * eighth, 'triangle', chord[i], eighth * 1.6, 0.06, {
+        attack: 0.02,
+        release: eighth * 1.2,
+        destination: dest,
+      });
+    }
+    // Soft sine pad on the root for the whole bar, low and warm.
+    tone(bar, 'sine', chord[0] / 2, beat * 1.9, 0.035, {
+      attack: 0.08,
+      release: beat * 0.8,
+      destination: dest,
+    });
+
+    musicStep += 1;
+    musicNextNoteTime += beat * 2; // each "bar" here is 2 beats long
+  }
+
+  function startMusic() {
+    if (!ensureCtx() || musicTimer) return;
+
+    // A dedicated music bus so we can fade it independently of the SFX.
+    const g = ctx.createGain();
+    g.gain.value = 1.0;
+    g.connect(master);
+    musicNodes = { gain: g };
+
+    musicStep = 0;
+    // Begin slightly ahead of "now" so the first bar isn't clipped.
+    musicNextNoteTime = ctx.currentTime + 0.1;
+
+    const LOOKAHEAD = 0.1; // schedule notes up to 100ms ahead
+    const tick = () => {
+      if (!ctx || !musicNodes) return;
+      while (musicNextNoteTime < ctx.currentTime + LOOKAHEAD) {
+        scheduleMusicStep();
+      }
+    };
+    tick();
+    musicTimer = setInterval(tick, 25);
+  }
+
+  function stopMusic() {
+    if (musicTimer) {
+      clearInterval(musicTimer);
+      musicTimer = null;
+    }
+    if (musicNodes) {
+      const g = musicNodes.gain;
+      musicNodes = null;
+      const now = ctx ? ctx.currentTime : 0;
+      try {
+        if (ctx) {
+          g.gain.cancelScheduledValues(now);
+          g.gain.setValueAtTime(Math.max(0.0001, g.gain.value), now);
+          g.gain.exponentialRampToValueAtTime(0.0001, now + 0.3);
+        }
+      } catch { /* ignore */ }
+      // Disconnect after the fade; already-scheduled notes ride it out.
+      try {
+        setTimeout(() => { try { g.disconnect(); } catch { /* gone */ } }, 400);
+      } catch { try { g.disconnect(); } catch { /* gone */ } }
+    }
+  }
+
+  // Public toggles. Persist the desired state so they can be flipped before the
+  // context exists (e.g. before the first gesture) and applied on resume.
+  function setAmbient(on) {
+    ambientOn = !!on;
+    if (disposed) return;
+    if (ambientOn) {
+      // Only actually start once the context is running (resume() handles the
+      // initial auto-start); if we're already running, start immediately.
+      if (ctx && ctx.state === 'running') { ambientStarted = true; startAmbient(); }
+    } else {
+      stopAmbient();
+    }
+  }
+
+  function setMusic(on) {
+    musicOn = !!on;
+    if (disposed) return;
+    if (musicOn) {
+      if (ctx && ctx.state === 'running') startMusic();
+    } else {
+      stopMusic();
+    }
+  }
+
   // --- Resume on user gesture ------------------------------------------------
 
   // Browsers start the AudioContext 'suspended' and only allow it to run after a
   // user gesture. resume() can be called eagerly (e.g. by the game on boot); it
   // is a no-op until a gesture lands, after which the context unlocks.
+  // Start the long-lived beds once the context is actually running. Called after
+  // resume() lands. Guarded so the ambient bed only auto-starts once.
+  function startBedsIfRunning() {
+    if (disposed || !ctx || ctx.state !== 'running') return;
+    if (ambientOn && !ambientStarted) {
+      ambientStarted = true;
+      startAmbient();
+    }
+    if (musicOn && !musicTimer) {
+      startMusic();
+    }
+  }
+
   function resume() {
     const c = ensureCtx();
     if (c && typeof c.resume === 'function' && c.state !== 'closed') {
       // resume() returns a promise; swallow rejections (some browsers reject
       // when called without a gesture — the one-shot listener covers that case).
-      c.resume().catch(() => {});
+      try {
+        const p = c.resume();
+        if (p && typeof p.then === 'function') {
+          p.then(startBedsIfRunning).catch(() => {});
+        }
+      } catch { /* ignore */ }
+      // Some contexts are already 'running' (or resume synchronously); cover
+      // that case too so the ambient bed still starts.
+      startBedsIfRunning();
     }
   }
 
@@ -335,6 +616,7 @@ export function createAudio(events) {
     unsubscribers.push(events.on('beep', playBeep));
     unsubscribers.push(events.on('go', playGo));
     unsubscribers.push(events.on('whoosh', playWhoosh));
+    unsubscribers.push(events.on('splash', playSplash));
     addGestureListeners();
   }
 
@@ -348,6 +630,29 @@ export function createAudio(events) {
       try { if (typeof off === 'function') off(); } catch { /* ignore */ }
     }
     unsubscribers.length = 0;
+
+    // Stop the long-lived beds: clear the music scheduler interval and stop all
+    // ambient/music nodes before we close the context.
+    if (musicTimer) {
+      try { clearInterval(musicTimer); } catch { /* ignore */ }
+      musicTimer = null;
+    }
+    if (ambientNodes) {
+      const n = ambientNodes;
+      ambientNodes = null;
+      for (const node of [n.src, n.lfoCut, n.lfoGain]) {
+        try { node.stop(); } catch { /* may already be stopped */ }
+      }
+      for (const node of [n.src, n.lp, n.lfoCut, n.lfoCutAmt, n.g, n.swell, n.lfoGain, n.lfoGainAmt]) {
+        try { node.disconnect(); } catch { /* already gone */ }
+      }
+    }
+    if (musicNodes) {
+      try { musicNodes.gain.disconnect(); } catch { /* already gone */ }
+      musicNodes = null;
+    }
+    ambientStarted = false;
+
     if (ctx && ctx.state !== 'closed') {
       // close() returns a promise; we don't await it.
       try { ctx.close().catch(() => {}); } catch { /* ignore */ }
@@ -357,5 +662,5 @@ export function createAudio(events) {
     noiseBuffer = null;
   }
 
-  return { resume, dispose };
+  return { resume, dispose, setAmbient, setMusic };
 }

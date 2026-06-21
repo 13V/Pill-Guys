@@ -18,6 +18,16 @@ import { createCinematics } from './effects/cinematics.js';
 import { createNet } from './net.js';
 import { createRemotePlayers } from './effects/remotePlayers.js';
 import { createOcean, SEA_LEVEL } from './effects/ocean.js';
+import { createClouds } from './effects/clouds.js';
+import { createBirds } from './effects/birds.js';
+import { createIslands } from './effects/islands.js';
+import { createSeaSparkle } from './effects/seaSparkle.js';
+import { createSun } from './effects/sun.js';
+import { createFish } from './effects/fish.js';
+import { createBuoys } from './effects/buoys.js';
+import { createSplash } from './effects/splash.js';
+import { createProgress } from './effects/progress.js';
+import { createResults } from './effects/results.js';
 import { createAura } from './effects/aura.js';
 import { createPet } from './pet.js';
 import { cosmetics } from './cosmetics.js';
@@ -68,6 +78,18 @@ async function start() {
   const transition = createTransition();
   const cinematics = createCinematics(); // FINISH slam + level card + 3-2-1-GO countdown
   const ocean = createOcean(scene); // the sea the courses float above (death waterline)
+  // Living-ocean ambiance (game scene only): drifting clouds + gulls + distant
+  // islands + sea-sparkle + sun + leaping fish + bobbing buoys, and a death splash.
+  const ambiance = [
+    createClouds(scene), createBirds(scene), createIslands(scene), createSeaSparkle(scene),
+    createSun(scene), createFish(scene), createBuoys(scene), createSplash(scene, events),
+  ];
+  // Race UI: a top progress bar + a Fall-Guys "QUALIFIED!" results screen.
+  const progress = createProgress();
+  const results = createResults();
+  const spawnX = built.spawn.x, finishX = built.finishPos.x;
+  const courseFrac = (x) => Math.max(0, Math.min(1, (x - spawnX) / Math.max(1, finishX - spawnX)));
+  const myName = 'Bean ' + Math.floor(Math.random() * 900 + 100);
   // Equipped aura rides on the player; equipped pet follows it.
   const aura = createAura(player.object3D);
   aura.setVariant(equipped.aura);
@@ -115,6 +137,14 @@ async function start() {
   lobbyBtn.addEventListener('click', () => { location.href = 'index.html'; });
   document.body.appendChild(lobbyBtn);
 
+  // Music toggle (the ambient sea wash is always on; the music bed is off by default).
+  let musicOn = false;
+  const musicBtn = document.createElement('button');
+  musicBtn.textContent = '🎵 Music';
+  musicBtn.style.cssText = 'position:fixed;top:10px;right:12px;z-index:1100;font:700 12px "Baloo 2",system-ui,sans-serif;color:#10243f;background:rgba(255,255,255,0.88);border:2px solid #2f7bff;border-radius:14px;padding:6px 12px;cursor:pointer;box-shadow:0 3px 0 rgba(27,80,200,0.35);opacity:0.65;';
+  musicBtn.addEventListener('click', () => { musicOn = !musicOn; if (audio.setMusic) audio.setMusic(musicOn); musicBtn.style.opacity = musicOn ? '1' : '0.65'; });
+  document.body.appendChild(musicBtn);
+
   hud.onRestart(() => { player.respawn(); hud.reset(); followCam.snap(); cinematics.clear(); advancing = false; simRunning = true; });
 
   // Progression: on finish, SLAM the "FINISH!" banner where they crossed and
@@ -130,15 +160,15 @@ async function start() {
     cinematics.slam('FINISH!', `${level.name} — clear!`);
     simRunning = false;
     cosmetics.addCoins((hud.coins || 0) + 100);
+    results.recordFinish(myName, true);
+    setTimeout(() => results.show(), 600); // FINISH! slam first, then the QUALIFIED! panel
     if (levelIndex + 1 < LEVELS.length) {
       setTimeout(() => {
         events.emit('whoosh');
         transition.fadeOut(550, () => { location.search = `?level=${levelIndex + 2}`; });
-      }, 1500);
-    } else {
-      // final level: swap the slam for the celebratory win banner (+ Restart).
-      setTimeout(() => { cinematics.clear(); hud.win(); }, 1000);
+      }, 2900); // hold the results a beat before wiping to the next round
     }
+    // final level: the results panel stays up; the ← Lobby button returns home.
   });
 
   // Level select: number keys jump to a level (0 = level 10).
@@ -286,13 +316,15 @@ async function start() {
       const n = remotePlayers.count() + 1;
       mpTag.textContent = mpStarted ? `🟢 ${n} in race` : `⏳ waiting · ${n} in lobby`;
     };
+    const peerNames = new Map();
     net = createNet({
       url: mpUrl, room: mpRoom, level: levelIndex + 1,
-      skin: equipped.skin, name: 'Bean' + Math.floor(Math.random() * 900 + 100),
-      onWelcome: (m) => { placeLocalAtSlot(m.slot); for (const pe of m.peers) remotePlayers.add(pe.id, pe.skin, pe.name, pe.p, pe.r); refreshTag(); },
-      onJoin: (m) => { remotePlayers.add(m.id, m.skin, m.name, m.p, m.r); refreshTag(); },
+      skin: equipped.skin, name: myName,
+      onWelcome: (m) => { placeLocalAtSlot(m.slot); for (const pe of m.peers) { remotePlayers.add(pe.id, pe.skin, pe.name, pe.p, pe.r); peerNames.set(pe.id, pe.name); } refreshTag(); },
+      onJoin: (m) => { remotePlayers.add(m.id, m.skin, m.name, m.p, m.r); peerNames.set(m.id, m.name); refreshTag(); },
       onState: (m) => { remotePlayers.setState(m.id, m.p, m.r, m.m); },
       onStart: (m) => { onServerStart(m.inMs); refreshTag(); },
+      onFinish: (m) => { results.recordFinish(peerNames.get(m.id) || 'Bean', false); },
       onLeave: (m) => { remotePlayers.remove(m.id); refreshTag(); },
     });
     setTimeout(() => { if (net && !net.connected) mpTag.textContent = '⚠ no server (run: npm run relay)'; }, 4000);
@@ -349,6 +381,8 @@ async function start() {
     particles.update(dt);
     worldAnim.update(dt);
     ocean.update(dt);
+    for (const a of ambiance) a.update(dt);
+    progress.update(courseFrac(player.translation().x), remotePlayers ? remotePlayers.list().map((p) => courseFrac(p.x)) : []);
     coinJuice.update(dt);
     aura.update(dt);
     pet.update(dt, player.translation(), followCam.yaw());
